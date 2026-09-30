@@ -61,7 +61,7 @@ value of `bassValue` or 0 if `bassValue` fails `testAmpValue` check.
 void setAmpBass(ampValues_t* a, int bassValue);
 
 /**
-Sets the value of the `trebel` property of the passed `ampValues_t` `a` to be the
+Sets the value of the `treble` property of the passed `ampValues_t` `a` to be the
 value of `trebleValue` or 0 of `trebleValue` fails `testAmpValue` check.
 */
 void setAmpTreble(ampValues_t* a, int trebleValue);
