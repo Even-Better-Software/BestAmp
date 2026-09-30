@@ -1,7 +1,7 @@
 .RECIPEPREFIX = >
 
 CC      = gcc
-CFLAGS  = -Mj -Wall -Wextra -Iinclude -Iexternal/portaudio/include
+CFLAGS  = -Wall -Wextra -Iinclude -Iexternal/portaudio/include
 
 LDFLAGS = -Lexternal/portaudio/lib -lportaudio
 
