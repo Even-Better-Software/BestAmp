@@ -1,0 +1,11 @@
+If:
+    PathMatch: .*\.c
+
+CompileFlags:
+    Add:
+        - -Wall
+        - -Wextra
+        - -Iinclude
+        - -Iexternal/portaudio/include]
+    Compiler: gcc
+
