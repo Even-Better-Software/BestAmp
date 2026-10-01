@@ -19,7 +19,8 @@ in `ba_dsp.c` you will notice that the value of
 continue w/ derivations based off these coeffecient normalizations
 */
 
-#define BA_CENTER_FREQ (200)            // apparently a common value for this
+#define BA_BASS_CENTER_FREQ (200)       // apparently a common frequency value for low shelving
+#define BA_TREB_CENTER_FREQ (5000)      // apparently a common frequency value for high shelving
 #define TWOPI (2*3.14158265359)         // probably enough precision but idk
 
 
