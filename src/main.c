@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <portaudio.h>
+#include "ba_dsp.h"
 
 
 #define true    (1)
