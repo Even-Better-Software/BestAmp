@@ -58,7 +58,7 @@ Container for application state.
 typedef struct BA_APP_INFO {
     ampValues_t* ampValues;
     hostPrefs_t* hostPrefs;
-    devPrefs_t* defPrefs;
+    devPrefs_t* devPrefs;
     PaHostApiInfo* hostApiInfo;
     PaDeviceInfo* inDevInfo;
     PaDeviceInfo* outDevInfo;
@@ -316,16 +316,17 @@ int bestAmpCB(
     void* userData 
 )
 {
-    const float* in = (float*)input;
-    float* out = (float*)output;
+    const float* in = (float*)input;        // this has to be derived from the chosen buffer format
+    float* out = (float*)output;            // this has to be derived from the chosen buffer format
     // sysInfo_t* sysInfo = (sysInfo_t*)userData;
-    // appInfo_t* appInfo = (appInfo_t*)userData;
+    appInfo_t* appInfo = (appInfo_t*)userData;
+    // (void)userData;
 
     // [WO] todo copy input to output
     // where 2 is the number of channels
-    for (int i = 0; i < framesPerBuffer; i++)
+    for (unsigned int i = 0; i < framesPerBuffer * appInfo->devPrefs->inChanneln; i++)
     {
-        *out++ = 2 * *(in++);
+        *out++ = appInfo->ampValues->gain * *(in++);
     }
 
     return paContinue;
@@ -340,28 +341,22 @@ int main(int argc, char** argv)
     PaStream* stream;
     PaError e;
 
-    // int hostApiIndex        = -1;
-    // int inputDeviceIndex    = -1;
-    // int outputDeviceIndex   = -1;
-    // int inputChannel        = -1; // channel idx of device (but what if multiple channels?), no count
-    // int outputChannel       = -1; // channel idx of device (but what if multiple channels?), no count
-    // int latency             = -1;
-    // double sampleRate       = -1; // ex. 44100
-    // int framesPerBuffer     = -1; // ex. 512
-    // long sampleFormat       = paFloat32;
-
-
     ampValues_t amp = { 0 };
-    initAmpValues(&amp); // BestAmp defaults (1,1,1,1)
-
     hostPrefs_t hostPrefs = { 0 };
-    initHostPrefs(&hostPrefs); // no value sentinels (query from portaudio)
-
     devPrefs_t devPrefs = { 0 };
-    initDevPrefs(&devPrefs); // no value sentinels (query from portaudio)
-
+    
+    // app info state container
     appInfo_t appInfo = { 0 };
+    appInfo.ampValues = &amp;
+    appInfo.devPrefs = &devPrefs;
+    appInfo.hostPrefs = &hostPrefs;
 
+    initAmpValues(&amp); // BestAmp defaults (1,1,1,1)
+    initHostPrefs(&hostPrefs);
+    initDevPrefs(&devPrefs);
+
+
+    // parse CLI arguments
     if (argc > 1)
         setAmpGain(&amp, atoi(argv[1]));    // gain cmd arg
     if (argc > 2)
@@ -470,14 +465,15 @@ int main(int argc, char** argv)
     if (devPrefs.outChanneln < 0)
         devPrefs.outChanneln = appInfo.outDevInfo->maxOutputChannels;
     if (devPrefs.sampleFormat < 0)
-        devPrefs.sampleFormat = paInt32;
+        devPrefs.sampleFormat = paFloat32;
+        //devPrefs.sampleFormat = paInt32;
     if (devPrefs.framesPerBuffer < 0)
         devPrefs.framesPerBuffer = 512;
     if (devPrefs.sampleRate < 0)
         devPrefs.sampleRate = (appInfo.inDevInfo->defaultSampleRate > appInfo.outDevInfo->defaultSampleRate)
             ? appInfo.outDevInfo->defaultSampleRate
             : appInfo.inDevInfo->defaultSampleRate;     // whichever is smaller but they should be the same
-    
+ 
     printHostPrefs(&hostPrefs);
     printDevPrefs(&devPrefs);
     
