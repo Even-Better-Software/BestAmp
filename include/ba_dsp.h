@@ -17,10 +17,10 @@ if you are comparing the equations in the cookbook to the implementations
 in `ba_dsp.c` you will notice that the value of 
 
 continue w/ derivations based off these coeffecient normalizations
-
 */
 
 #define BA_CENTER_FREQ (200)            // apparently a common value for this
+#define TWOPI (2*3.14158265359)         // probably enough precision but idk
 
 
 typedef struct BA_BIQUAD_FILTER {
@@ -55,14 +55,14 @@ To be called when amp bass dial is modified.
     re-computes highShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_highShelf(biQuadFilter_t* bf,
-                            int dbGain, float sampleFrequency);
+                            float dbGain, float sampleFreq);
 
 /**
 To be called when amp treble dial is modified.
     re-computes lowShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_lowShelf( biQuadFilter_t* bf,
-                            int dbGain, float sampleFrequency);
+                            float dbGain, float sampleFreq);
 
 
 #endif
