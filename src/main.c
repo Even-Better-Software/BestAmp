@@ -22,17 +22,21 @@
 
 
 
-// [WO] dont know that we really need such a construct
-// struct CMD_ARGS {
-// } typedef cmdArgs_t;
-
-
 typedef struct BA_AMP_VALUES {
     int gain;           // 1-10, as per my amp
     int bass;           // 1-10, as per my amp
     int treble;         // 1-10, as per my amp
     int power;          // 1-10, as per my amp
 } ampValues_t;
+
+
+typedef struct BA_SYS_INFO {
+    int apiIndex;
+    int inputDeviceIndex;
+    int outputDeviceIndex;
+    int inputDeviceChannelIdx;
+    int outputDeviceChannelIdx;
+} sysInfo_t;
 
 
 /**
@@ -194,6 +198,8 @@ int main(int argc, char** argv)
     int hostApiIndex = -1;
     int inputDeviceIndex = -1;
     int outputDeviceIndex = -1;
+    int inputChannel = -1;          // channel idx of device (but what if multiple channels?)
+    int outputChannel = -1;         // channel idx of device (but what if multiple channels?)
 
     // [WO] probably dont have to be so strict, can just resolve them to nothing
     // parse command line arguments
@@ -221,11 +227,15 @@ int main(int argc, char** argv)
         hostApiIndex        = atoi(argv[5]);
     if (argc > 6)
         inputDeviceIndex    = atoi(argv[6]);
+    if (argc > 7)
+        inputChannel        = atoi(argv[7]);
+    if (argc > 8)
+        outputChannel       = atoi(argv[8]);
     
     // show the values
     printAmpValues(&amp);
-    printf("TEMP: { hostApiIndex: %d, inputDeviceIndex: %d, outputDeviceIndex: %d }\n",
-        hostApiIndex, inputDeviceIndex, outputDeviceIndex);
+    printf("TEMP: { hostApiIndex: %d, inputDeviceIndex: %d, outputDeviceIndex: %d, inputChannel: %d, outputChannel: %d }\n",
+        hostApiIndex, inputDeviceIndex, outputDeviceIndex, inputChannel, outputChannel);
     printf("\n");
 
 
