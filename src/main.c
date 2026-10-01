@@ -380,7 +380,8 @@ int main(int argc, char** argv)
     if (argc > 10)
         devPrefs.sampleRate = atof(argv[10]);       // device sample rate
     if (argc > 11)
-        devPrefs.sampleFormat = atol(argv[11]);     // device sample format
+        devPrefs.sampleFormat = paFloat32;          // [WO] for now its always this
+        // devPrefs.sampleFormat = atol(argv[11]);  // device sample format
     if (argc > 12)
         devPrefs.framesPerBuffer = atoi(argv[12]);  // device frames per buffer
     
