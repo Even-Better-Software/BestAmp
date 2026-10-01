@@ -278,7 +278,7 @@ int main(int argc, char** argv)
 
 
     // initalize portaudio
-    Pa_Initialize();
+    e = Pa_Initialize();
     if (e != paNoError)
         goto error;
    
@@ -347,8 +347,10 @@ int main(int argc, char** argv)
     // Is format supported test 
     // Pa_IsFormatSupported
     e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, sampleRate);
-    if (e != paNoError)
+    if (e != paNoError) {
+        printf("\e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
+    }
 
     // Pa_OpenStream(...)
     // Pa_CloseStream(...)
