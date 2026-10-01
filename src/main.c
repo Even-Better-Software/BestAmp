@@ -84,20 +84,20 @@ void setAmpPower(ampValues_t* a, int powerValue);
 dump struct fields to stdout.
 */
 void printHostApiInfo(PaHostApiInfo* h);
+
 /**
 dump struct fields to stdout.
 */
 void printDeviceInfo(PaDeviceInfo* d);
 
 
-
 /**
 BestAmp PortAudio callback definition.
 */
-PaStreamCallbackResult bestAmpCB(
+int bestAmpCB(
     const void* input,
     void* output,
-    unsigned long frameCount,
+    unsigned long framesPerBuffer,
     const PaStreamCallbackTimeInfo* timeInfo,
     PaStreamCallbackFlags statusFlags,
     void* userData 
@@ -201,16 +201,26 @@ void printDeviceInfo(PaDeviceInfo* d)
 
 
 // BestAmp PortAudio callback implementation.
-PaStreamCallbackResult bestAmpCB(
+int bestAmpCB(
     const void* input,
     void* output,
-    unsigned long frameCount,
+    unsigned long framesPerBuffer,
     const PaStreamCallbackTimeInfo* timeInfo,
     PaStreamCallbackFlags statusFlags,
     void* userData 
 )
 {
-    // [WO] todo, copy intput to output
+    const float* in = (float*)input;
+    float* out = (float*)output;
+    // sysInfo_t* sysInfo = (sysInfo_t*)userData;
+
+    // [WO] todo copy input to output
+    // where 2 is the number of channels
+    for (int i = 0; i < framesPerBuffer * 2; i++)
+    {
+        *out++ = 2 * *(in++);
+    }
+
     return paContinue;
 }
 
@@ -229,7 +239,8 @@ int main(int argc, char** argv)
     int inputChannel        = -1; // channel idx of device (but what if multiple channels?), no count
     int outputChannel       = -1; // channel idx of device (but what if multiple channels?), no count
     int latency             = -1;
-    double sampleRate       = -1;
+    double sampleRate       = -1; // ex. 44100
+    int framesPerBuffer     = -1; // ex. 512
     long sampleFormat       = paFloat32;
 
 
@@ -260,15 +271,19 @@ int main(int argc, char** argv)
     if (argc > 6)
         inputDeviceIndex = atoi(argv[6]);
     if (argc > 7)
-        inputChannel = atoi(argv[7]);
+        outputDeviceIndex = atoi(argv[7]);
     if (argc > 8)
-        outputChannel = atoi(argv[8]);
+        inputChannel = atoi(argv[8]);
     if (argc > 9)
-        latency = atoi(argv[9]);
+        outputChannel = atoi(argv[9]);
     if (argc > 10)
-        sampleRate = atof(argv[10]);
+        latency = atoi(argv[10]);
     if (argc > 11)
-        sampleFormat = atol(argv[11]);      // format values
+        sampleRate = atof(argv[11]);
+    if (argc > 12)
+        framesPerBuffer = atoi(argv[12]);
+    if (argc > 13)
+        sampleFormat = atol(argv[13]);      // format values
     
     // show the values
     printAmpValues(&amp);
@@ -276,13 +291,13 @@ int main(int argc, char** argv)
         hostApiIndex, inputDeviceIndex, outputDeviceIndex, inputChannel, outputChannel);
     printf("\n");
 
-
     // initalize portaudio
     e = Pa_Initialize();
     if (e != paNoError)
         goto error;
    
- 
+    
+    // [WO] THIS DOES NOT HAVE TO BE PART OF THIS PROGRAM AT ALL
     // [WO] maybe hidden by a switch (so that people can see what
     // APIs/Interfaces they can use w/ the program)?
 
@@ -294,7 +309,7 @@ int main(int argc, char** argv)
 
     int hostApiCount = Pa_GetHostApiCount();
     
-    printf("Available host APIs & devices\n");
+    printf("Available host APIs\n");
     printf("%d\n", hostApiCount);
     printf("\n");
 
@@ -320,10 +335,26 @@ int main(int argc, char** argv)
     // show default output device
     oinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice());
     printDeviceInfo(oinfo);
+    printf("\n");
+    // [WO] END OF THE PART THAT IS IGNORABLE
 
 
     // reduce system values to defaults (as per pa query results)
-    
+    // NON PERMANENT SOLUTION BUT I JUST WANT TO MAKE SURE I CAN ENTER THIS
+    if (inputDeviceIndex < 0)
+        inputDeviceIndex = Pa_GetDefaultInputDevice();
+    iinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(inputDeviceIndex);
+    if (iinfo == NULL)
+        goto error;
+    if (outputDeviceIndex < 0)
+        outputDeviceIndex = Pa_GetDefaultOutputDevice();
+    oinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(outputDeviceIndex);
+    if (oinfo == NULL)
+        goto error;
+    if (sampleRate < 0)
+        sampleRate = iinfo->defaultSampleRate;
+    if (framesPerBuffer < 0)
+        framesPerBuffer = 256;      // I actually don't know from where I could query this
 
     
     // [WO] info dump ends
@@ -333,14 +364,14 @@ int main(int argc, char** argv)
     PaStreamParameters iStreamParams, oStreamParams;
 
     iStreamParams.device = inputDeviceIndex;
-    iStreamParams.channelCount = inputChannel;
-    iStreamParams.suggestedLatency = latency;
+    iStreamParams.channelCount = iinfo->maxInputChannels;
+    iStreamParams.suggestedLatency = iinfo->defaultLowInputLatency;
     iStreamParams.sampleFormat = sampleFormat;
     iStreamParams.hostApiSpecificStreamInfo = NULL;
 
     oStreamParams.device = outputDeviceIndex;
-    oStreamParams.channelCount = outputChannel;
-    oStreamParams.suggestedLatency = latency;
+    oStreamParams.channelCount = oinfo->maxOutputChannels;
+    oStreamParams.suggestedLatency = oinfo->defaultLowOutputLatency;
     oStreamParams.sampleFormat = sampleFormat;
     oStreamParams.hostApiSpecificStreamInfo = NULL;
 
@@ -348,15 +379,37 @@ int main(int argc, char** argv)
     // Pa_IsFormatSupported
     e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, sampleRate);
     if (e != paNoError) {
-        printf("\e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("Format supported error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
     }
 
-    // Pa_OpenStream(...)
-    // Pa_CloseStream(...)
+    e = Pa_OpenStream(  &stream,
+                        &iStreamParams,
+                        &oStreamParams,
+                        sampleRate,
+                        framesPerBuffer,
+                        0,
+                        bestAmpCB,
+                        NULL );
+    if (e != paNoError) {
+        printf("Open stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        goto error;
+    }
+    e = Pa_StartStream(stream);
+    if (e != paNoError) {
+        printf("Start stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        goto error;
+    }
+
+    // [WO] I know this is bad but...
+    getchar();
+
+    e = Pa_CloseStream(stream);
+    if (e != paNoError) {
+        printf("Close stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        goto error;
+    }
    
-
-
     // terminate portaudio
     Pa_Terminate();
 
