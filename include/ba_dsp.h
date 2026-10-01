@@ -14,7 +14,8 @@ where a0 = 1
 & b0 = 1
 
 if you are comparing the equations in the cookbook to the implementations
-in `ba_dsp.c` you will notice that the value of 
+in `ba_dsp.c` you will notice that a0 is never used in any equations. a0
+coeffecient is in the denominator thus useless if its 1, so it is omitted.
 
 continue w/ derivations based off these coeffecient normalizations
 */
