@@ -30,16 +30,39 @@ typedef struct BA_AMP_VALUES {
 } ampValues_t;
 
 
-typedef struct BA_SYS_INFO {
-    int apiIndex;
-    int inputDeviceIndex;
-    int outputDeviceIndex;
-    int inputDeviceChannelIdx;
-    int outputDeviceChannelIdx;
-    int latency;
+typedef struct BA_HOST_PREFS {
+    int hostApiIdx;
+    int inDevIdx;
+    int outDevIdx;
+} hostPrefs_t;
+
+
+typedef struct BA_DEVICE_PREFS {
+    int inChanneln; 
+    int outChanneln;
     double sampleRate;
-    long sampleFormat;
-} sysInfo_t;
+    int framesPerBuffer;
+    long sampleFormat;  // I would almost like to be able to cast to the thing at this
+} devPrefs_t;           // determine if you can store 'types' in variables (seems like a far fetched thing)
+
+
+/**
+Container for application state.
+    `hostApiInfo`
+        should be a pointer to `PaHostApiInfo` of the target host API
+    `inDevInfo`
+        should be a pointer to `PaDeviceInfo` of the target input device
+    `outDevInfo`
+        should be a pointer to `PaDeviceInfo` of the target output device
+*/
+typedef struct BA_APP_INFO {
+    ampValues_t* ampValues;
+    hostPrefs_t* hostPrefs;
+    devPrefs_t* defPrefs;
+    PaHostApiInfo* hostApiInfo;
+    PaDeviceInfo* inDevInfo;
+    PaDeviceInfo* outDevInfo;
+} appInfo_t;
 
 
 /**
@@ -48,12 +71,10 @@ from the terminal)
 */
 void printAmpValues(ampValues_t* a);
 
-
 /**
 Test that a value is between BA_DIAL_MIN & BA_DIAL_MAX
 */
 int testAmpValue(int value);
-
 
 /**
 Sets the value of the `gain` property of the passed `ampValues_t` `a` to be
@@ -78,6 +99,35 @@ Sets the value of the `power` property of the passed `ampValues_t` `a` to be the
 value of `powerValue` or 0 if `powerValue` failas `testAmpValue` check.
 */
 void setAmpPower(ampValues_t* a, int powerValue);
+
+
+void printHostPrefs(hostPrefs_t* s);
+
+/**
+Set all host preferences to sentinel of `-1`
+    This will tell the program to use the portaudio defaults for preferences
+*/
+void initHostPrefs(hostPrefs_t* s);
+
+// [WO] at-least right now, these aren't really doing anything
+// void setHostApiIdx(hostPrefs_t* s, int hostApiIndex);
+// void setHostInDevIdx(hostPrefs_t* s, int inDevIdx);
+// void setHostOutDevIdx(hostPrefs_t* s, int outDevIdx);
+
+
+void printDevPrefs(devPrefs_t* d);
+
+/**
+Set all device preferences to sentinel of `-1`.
+    This will tell the program to use the portaudio defaults for preferences
+*/
+void initDevPrefs(devPrefs_t* d);
+
+// [WO] at-least right now, these aren't really doing anything
+// void setDevInChanneln(devPrefs_t* d, int inChanneln);
+// void setDevOutChanneln(devPrefs_t* d, int outChanneln);
+// void setDevSampleRate(devPrefs_t* d, double sampleRate);
+// void setDevFramesPerBuffer(devPrefs_t* d, int framesPerBuffer);
 
 
 /**
@@ -111,6 +161,13 @@ void printAmpValues(ampValues_t* a)
         a->gain, a->bass, a->treble, a->power); 
 }
 
+void initAmpValues(ampValues_t* a)
+{
+    a->gain = 1;
+    a->bass = 1;
+    a->treble = 1;
+    a->power = 1;
+}
 
 int testAmpValue(int value)
 {
@@ -118,7 +175,6 @@ int testAmpValue(int value)
         return false;
     return true;
 }
-
 
 void setAmpGain(ampValues_t* a, int gainValue)
 {
@@ -150,6 +206,56 @@ void setAmpPower(ampValues_t* a, int powerValue)
         a->power = powerValue;
     else
         a->power = BA_DIAL_MIN;
+}
+
+
+void printHostPrefs(hostPrefs_t* h)
+{
+    printf(
+        "HostPrefs: {"          \
+            "hostIdx: %d, "     \
+            "inDevIdx: %d, "    \
+            "outDevIdx: %d, "   \
+        "}\n",
+        h->hostApiIdx,
+        h->inDevIdx,
+        h->outDevIdx
+    );
+}
+
+void initHostPrefs(hostPrefs_t* h)
+{
+    h->hostApiIdx = -1;
+    h->inDevIdx = -1;
+    h->outDevIdx = -1; 
+}
+
+
+void printDevPrefs(devPrefs_t* d)
+{
+    printf(
+        "DevPrefs: {"                   \
+            "inChanneln: %d, "          \
+            "outChanneln: %d, "         \
+            "sampleRate: %f, "          \
+            "sampleFormat: %ld, "       \
+            "framesPerBuffer: %d, "     \
+        "}\n",
+        d->inChanneln,
+        d->outChanneln,
+        d->sampleRate,
+        d->sampleFormat,
+        d->framesPerBuffer
+    );
+}
+
+void initDevPrefs(devPrefs_t* d)
+{
+    d->inChanneln = -1;
+    d->outChanneln = -1;
+    d->sampleRate = -1;
+    d->sampleFormat = -1;
+    d->framesPerBuffer = -1;
 }
 
 
@@ -233,30 +339,27 @@ int main(int argc, char** argv)
     PaStream* stream;
     PaError e;
 
-    int hostApiIndex        = -1;
-    int inputDeviceIndex    = -1;
-    int outputDeviceIndex   = -1;
-    int inputChannel        = -1; // channel idx of device (but what if multiple channels?), no count
-    int outputChannel       = -1; // channel idx of device (but what if multiple channels?), no count
-    int latency             = -1;
-    double sampleRate       = -1; // ex. 44100
-    int framesPerBuffer     = -1; // ex. 512
-    long sampleFormat       = paFloat32;
+    // int hostApiIndex        = -1;
+    // int inputDeviceIndex    = -1;
+    // int outputDeviceIndex   = -1;
+    // int inputChannel        = -1; // channel idx of device (but what if multiple channels?), no count
+    // int outputChannel       = -1; // channel idx of device (but what if multiple channels?), no count
+    // int latency             = -1;
+    // double sampleRate       = -1; // ex. 44100
+    // int framesPerBuffer     = -1; // ex. 512
+    // long sampleFormat       = paFloat32;
 
 
-    // [WO] probably dont have to be so strict, can just resolve them to nothing
-    // parse command line arguments
-    // figure out how many there are
-    // then assign values as follows
-    // GAIN BASS TREBLE POWER ...
-    // resolving to 0 if there is no value (so it will get the default, which is the min)
-    // if (argc != BA_EXPECTED_ARGS)
-    //     goto error;
-    
-    // [WO] cmd args will be used for nowhttps://github.com/Even-Better-Software/BestAmp/tree/main
-    // initialize the `amp` instance of the `ampValues_t` struct from cmd args
-    // will be passed as the user data to PortAudio callback
     ampValues_t amp = { 0 };
+    initAmpValues(&amp); // BestAmp defaults (1,1,1,1)
+
+    hostPrefs_t hostPrefs = { 0 };
+    initHostPrefs(&hostPrefs); // no value sentinels (query from portaudio)
+
+    devPrefs_t devPrefs = { 0 };
+    initDevPrefs(&devPrefs); // no value sentinels (query from portaudio)
+
+    appInfo_t appInfo = { 0 };
 
     if (argc > 1)
         setAmpGain(&amp, atoi(argv[1]));    // gain cmd arg
@@ -266,29 +369,29 @@ int main(int argc, char** argv)
         setAmpTreble(&amp, atoi(argv[3]));  // treble cmd arg
     if (argc > 4)
         setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
+
     if (argc > 5) 
-        hostApiIndex = atoi(argv[5]);
+        hostPrefs.hostApiIdx = atoi(argv[5]);   // host api index
     if (argc > 6)
-        inputDeviceIndex = atoi(argv[6]);
+        hostPrefs.inDevIdx = atoi(argv[6]);     // host input device index
     if (argc > 7)
-        outputDeviceIndex = atoi(argv[7]);
+        hostPrefs.outDevIdx = atoi(argv[7]);    // host output device index
+
     if (argc > 8)
-        inputChannel = atoi(argv[8]);
+        devPrefs.inChanneln = atoi(argv[8]);    // device input channel number
     if (argc > 9)
-        outputChannel = atoi(argv[9]);
+        devPrefs.outChanneln = atoi(argv[9]);   // device output channel number
     if (argc > 10)
-        latency = atoi(argv[10]);
+        devPrefs.sampleRate = atof(argv[10]);       // device sample rate
     if (argc > 11)
-        sampleRate = atof(argv[11]);
+        devPrefs.sampleFormat = atol(argv[11]);     // device sample format
     if (argc > 12)
-        framesPerBuffer = atoi(argv[12]);
-    if (argc > 13)
-        sampleFormat = atol(argv[13]);      // format values
+        devPrefs.framesPerBuffer = atoi(argv[12]);  // device frames per buffer
     
     // show the values
     printAmpValues(&amp);
-    printf("TEMP: { hostApiIndex: %d, inputDeviceIndex: %d, outputDeviceIndex: %d, inputChannel: %d, outputChannel: %d }\n",
-        hostApiIndex, inputDeviceIndex, outputDeviceIndex, inputChannel, outputChannel);
+    printHostPrefs(&hostPrefs);
+    printDevPrefs(&devPrefs);
     printf("\n");
 
     // initalize portaudio
@@ -339,45 +442,53 @@ int main(int argc, char** argv)
     // [WO] END OF THE PART THAT IS IGNORABLE
 
 
-    // reduce system values to defaults (as per pa query results)
-    // NON PERMANENT SOLUTION BUT I JUST WANT TO MAKE SURE I CAN ENTER THIS
-    if (inputDeviceIndex < 0)
-        inputDeviceIndex = Pa_GetDefaultInputDevice();
-    iinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(inputDeviceIndex);
-    if (iinfo == NULL)
+    // coalesce to system defaults (mostly)
+    if (hostPrefs.hostApiIdx < 0)
+        hostPrefs.hostApiIdx = Pa_GetDefaultHostApi();
+    appInfo.hostApiInfo = (PaHostApiInfo*)Pa_GetHostApiInfo(hostPrefs.hostApiIdx);
+    if (appInfo.hostApiInfo == NULL) {
+        printf("\e[31merror getting host api info\e[0m\n");
         goto error;
-    if (outputDeviceIndex < 0)
-        outputDeviceIndex = Pa_GetDefaultOutputDevice();
-    oinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(outputDeviceIndex);
-    if (oinfo == NULL)
+    }
+    if (hostPrefs.inDevIdx < 0)
+        hostPrefs.inDevIdx = Pa_GetDefaultInputDevice();
+    appInfo.inDevInfo = (PaDeviceInfo*)Pa_GetDeviceInfo(hostPrefs.inDevIdx);
+    if (appInfo.inDevInfo == NULL) {
+        printf("\e[31merror getting in device inf\e[0m\n");
         goto error;
-    if (sampleRate < 0)
-        sampleRate = iinfo->defaultSampleRate;
-    if (framesPerBuffer < 0)
-        framesPerBuffer = 256;      // I actually don't know from where I could query this
-
+    }
+    if (hostPrefs.outDevIdx < 0)
+        hostPrefs.outDevIdx = Pa_GetDefaultOutputDevice();
+    appInfo.outDevInfo = (PaDeviceInfo*)Pa_GetDeviceInfo(hostPrefs.outDevIdx);
+    if (appInfo.outDevInfo == NULL) {
+        printf("\e[31merror getting out device info\e[0m\n");
+        goto error;
+    }
+    if (devPrefs.sampleFormat < 0)
+        devPrefs.sampleFormat = paInt32;
+    if (devPrefs.sampleRate < 0)
+        devPrefs.sampleRate = (appInfo.inDevInfo->defaultSampleRate > appInfo.outDevInfo->defaultSampleRate)
+            ? appInfo.outDevInfo->defaultSampleRate
+            : appInfo.inDevInfo->defaultSampleRate;     // whichever is smaller but they should be the same
     
-    // [WO] info dump ends
-    // then program continues (no more info dump)
-
     // Create Input/Output stream parameters from CLI stuff
     PaStreamParameters iStreamParams, oStreamParams;
 
-    iStreamParams.device = inputDeviceIndex;
-    iStreamParams.channelCount = iinfo->maxInputChannels;
-    iStreamParams.suggestedLatency = iinfo->defaultLowInputLatency;
-    iStreamParams.sampleFormat = sampleFormat;
+    iStreamParams.device = hostPrefs.inDevIdx;
+    iStreamParams.channelCount = appInfo.inDevInfo->maxInputChannels;
+    iStreamParams.suggestedLatency = appInfo.inDevInfo->defaultLowInputLatency;
+    iStreamParams.sampleFormat = devPrefs.sampleFormat;
     iStreamParams.hostApiSpecificStreamInfo = NULL;
 
-    oStreamParams.device = outputDeviceIndex;
-    oStreamParams.channelCount = oinfo->maxOutputChannels;
-    oStreamParams.suggestedLatency = oinfo->defaultLowOutputLatency;
-    oStreamParams.sampleFormat = sampleFormat;
+    oStreamParams.device = hostPrefs.outDevIdx;
+    oStreamParams.channelCount = appInfo.outDevInfo->maxOutputChannels;
+    oStreamParams.suggestedLatency = appInfo.outDevInfo->defaultLowOutputLatency;
+    oStreamParams.sampleFormat = devPrefs.sampleFormat;
     oStreamParams.hostApiSpecificStreamInfo = NULL;
 
     // Is format supported test 
     // Pa_IsFormatSupported
-    e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, sampleRate);
+    e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, devPrefs.sampleRate);
     if (e != paNoError) {
         printf("Format supported error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
@@ -386,11 +497,11 @@ int main(int argc, char** argv)
     e = Pa_OpenStream(  &stream,
                         &iStreamParams,
                         &oStreamParams,
-                        sampleRate,
-                        framesPerBuffer,
+                        devPrefs.sampleRate,
+                        devPrefs.framesPerBuffer,
                         0,
                         bestAmpCB,
-                        NULL );
+                        &appInfo );
     if (e != paNoError) {
         printf("Open stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
