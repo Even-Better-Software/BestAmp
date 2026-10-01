@@ -319,10 +319,11 @@ int bestAmpCB(
     const float* in = (float*)input;
     float* out = (float*)output;
     // sysInfo_t* sysInfo = (sysInfo_t*)userData;
+    // appInfo_t* appInfo = (appInfo_t*)userData;
 
     // [WO] todo copy input to output
     // where 2 is the number of channels
-    for (int i = 0; i < framesPerBuffer * 2; i++)
+    for (int i = 0; i < framesPerBuffer; i++)
     {
         *out++ = 2 * *(in++);
     }
@@ -464,24 +465,33 @@ int main(int argc, char** argv)
         printf("\e[31merror getting out device info\e[0m\n");
         goto error;
     }
+    if (devPrefs.inChanneln < 0)
+        devPrefs.inChanneln = appInfo.inDevInfo->maxInputChannels;
+    if (devPrefs.outChanneln < 0)
+        devPrefs.outChanneln = appInfo.outDevInfo->maxOutputChannels;
     if (devPrefs.sampleFormat < 0)
         devPrefs.sampleFormat = paInt32;
+    if (devPrefs.framesPerBuffer < 0)
+        devPrefs.framesPerBuffer = 512;
     if (devPrefs.sampleRate < 0)
         devPrefs.sampleRate = (appInfo.inDevInfo->defaultSampleRate > appInfo.outDevInfo->defaultSampleRate)
             ? appInfo.outDevInfo->defaultSampleRate
             : appInfo.inDevInfo->defaultSampleRate;     // whichever is smaller but they should be the same
     
+    printHostPrefs(&hostPrefs);
+    printDevPrefs(&devPrefs);
+    
     // Create Input/Output stream parameters from CLI stuff
     PaStreamParameters iStreamParams, oStreamParams;
 
     iStreamParams.device = hostPrefs.inDevIdx;
-    iStreamParams.channelCount = appInfo.inDevInfo->maxInputChannels;
+    iStreamParams.channelCount = devPrefs.inChanneln;
     iStreamParams.suggestedLatency = appInfo.inDevInfo->defaultLowInputLatency;
     iStreamParams.sampleFormat = devPrefs.sampleFormat;
     iStreamParams.hostApiSpecificStreamInfo = NULL;
 
     oStreamParams.device = hostPrefs.outDevIdx;
-    oStreamParams.channelCount = appInfo.outDevInfo->maxOutputChannels;
+    oStreamParams.channelCount = devPrefs.outChanneln;
     oStreamParams.suggestedLatency = appInfo.outDevInfo->defaultLowOutputLatency;
     oStreamParams.sampleFormat = devPrefs.sampleFormat;
     oStreamParams.hostApiSpecificStreamInfo = NULL;
