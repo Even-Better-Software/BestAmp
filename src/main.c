@@ -22,6 +22,7 @@
 #define BA_DIAL_MAX (10)
 
 
+
 // [WO] dont know that we really need such a construct
 // struct CMD_ARGS {
 // } typedef cmdArgs_t;
@@ -74,40 +75,6 @@ void setAmpPower(ampValues_t* a, int powerValue);
 
 
 
-
-/**
-Program Entry
-*/
-int main(int argc, char** argv)
-{
-    // parse command line arguments
-    // figure out how many there are
-    // then assign values as follows
-    // GAIN BASS TREBLE POWER ...
-    // resolving to 0 if there is no value (so it will get the default, which is the min)
-    if (argc != BA_EXPECTED_ARGS)
-        goto error;
-
-    // initialize the `amp` instance of the `ampValues_t` struct
-    // will be passed as the user data to PortAudio callback
-    ampValues_t amp = { 0 };
-
-    setAmpGain(&amp, atoi(argv[1]));    // gain cmd arg
-    setAmpBass(&amp, atoi(argv[2]));    // bass cmd arg
-    setAmpTreble(&amp, atoi(argv[3]));  // treble cmd arg
-    setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
-    
-    // show the values
-    printAmpValues(&amp);
-
-    return 0;
-
-error:
-    printf(BA_HELP);
-    return 1;
-}
-
-
 void printAmpValues(ampValues_t* a)
 {
     printf("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d }\n",
@@ -155,3 +122,103 @@ void setAmpPower(ampValues_t* a, int powerValue)
         a->power = BA_DIAL_MIN;
 }
 
+
+
+
+/**
+Program Entry
+*/
+int main(int argc, char** argv)
+{
+    // [WO] probably dont have to be so strict, can just resolve them to nothing
+    // parse command line arguments
+    // figure out how many there are
+    // then assign values as follows
+    // GAIN BASS TREBLE POWER ...
+    // resolving to 0 if there is no value (so it will get the default, which is the min)
+    // if (argc != BA_EXPECTED_ARGS)
+    //     goto error;
+    
+    // [WO] cmd args will be used for now
+    // initialize the `amp` instance of the `ampValues_t` struct from cmd args
+    // will be passed as the user data to PortAudio callback
+    ampValues_t amp = { 0 };
+    setAmpGain(&amp, atoi(argv[1]));    // gain cmd arg
+    setAmpBass(&amp, atoi(argv[2]));    // bass cmd arg
+    setAmpTreble(&amp, atoi(argv[3]));  // treble cmd arg
+    setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
+    
+    // show the values
+    printAmpValues(&amp);
+    printf("\n");
+
+    // initalize portaudio
+    Pa_Initialize();
+
+    
+    // [WO] maybe hidden by a switch (so that people can see what
+    // APIs/Interfaces they can use w/ the program)?
+
+    // enumerate host api info
+    PaHostApiInfo*   hinfo;
+    PaDeviceInfo*    dinfo;
+    int hostApiCount = Pa_GetHostApiCount();
+
+    printf("%d\n", hostApiCount);
+    printf("\n");
+
+    for (int i = 0; i < hostApiCount; i++) {
+        hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(i);
+        // print host api info
+        printf(
+            "HostApiInfo: { "           \
+                "structVersion: %d, "   \
+                "type: %d, "            \
+                "name: %s, "            \
+                "deviceCount: %d, "
+            "}\n",
+            hinfo->structVersion,
+            hinfo->type,
+            hinfo->name,
+            hinfo->deviceCount
+        );
+        // enumerate host api device info
+        for (int j = 0; j < hinfo->deviceCount; j++) {
+            dinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(j);
+            printf(
+                "DeviceInfo: { "                        \
+                    "structVersion: %d, "               \
+                    "name: %s, "                        \
+                    "maxInputChannels: %d, "            \
+                    "maxOutputChannels: %d, "           \
+                    "defaultLowInputLatency: %f, "      \
+                    "defaultLowOutpuLatency: %f, "      \
+                    "defaultHighInputLatency: %f, "     \
+                    "defaultHighOutputLatency: %f, "    \
+                    "defaultSampleRate: %f, "           \
+                "}\n",
+                dinfo->structVersion,
+                dinfo->name,
+                dinfo->maxInputChannels,
+                dinfo->maxOutputChannels,
+                dinfo->defaultLowInputLatency,
+                dinfo->defaultLowOutputLatency,
+                dinfo->defaultHighInputLatency,
+                dinfo->defaultHighOutputLatency,
+                dinfo->defaultSampleRate
+            );
+        }
+        printf("\n");
+    }
+
+
+    // terminate portaudio
+    Pa_Terminate();
+
+    return 0;
+
+error:
+    printf(BA_HELP);
+    return 1;
+}
+    
