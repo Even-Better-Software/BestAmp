@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <portaudio.h>
-#include <pa_asio.h>
 
 
 #define true    (1)
@@ -74,6 +73,23 @@ value of `powerValue` or 0 if `powerValue` failas `testAmpValue` check.
 void setAmpPower(ampValues_t* a, int powerValue);
 
 
+/**
+dump struct fields to stdout.
+*/
+void printHostApiInfo(PaHostApiInfo* h);
+/**
+dump struct fields to stdout.
+*/
+void printDeviceInfo(PaDeviceInfo* d);
+
+
+
+/**
+BestAmp PortAudio callback definition.
+*/
+
+
+
 
 void printAmpValues(ampValues_t* a)
 {
@@ -123,6 +139,51 @@ void setAmpPower(ampValues_t* a, int powerValue)
 }
 
 
+void printHostApiInfo(PaHostApiInfo* h)
+{
+    printf(
+        "HostApiInfo: { "               \
+            "structVersion: %d, "       \
+            "type: %d, "                \
+            "name: %s, "                \
+            "deviceCount: %d, "         \
+            "defaultInputDevice: %d, "  \
+            "defaultOutputDevice: %d, " \
+        "}\n",
+        h->structVersion,
+        h->type,
+        h->name,
+        h->deviceCount,
+        h->defaultInputDevice,
+        h->defaultOutputDevice
+    );
+}
+
+void printDeviceInfo(PaDeviceInfo* d)
+{
+    printf(
+        "DeviceInfo: { "                        \
+            "structVersion: %d, "               \
+            "name: %s, "                        \
+            "maxInputChannels: %d, "            \
+            "maxOutputChannels: %d, "           \
+            "defaultLowInputLatency: %f, "      \
+            "defaultLowOutpuLatency: %f, "      \
+            "defaultHighInputLatency: %f, "     \
+            "defaultHighOutputLatency: %f, "    \
+            "defaultSampleRate: %f, "           \
+        "}\n",
+        d->structVersion,
+        d->name,
+        d->maxInputChannels,
+        d->maxOutputChannels,
+        d->defaultLowInputLatency,
+        d->defaultLowOutputLatency,
+        d->defaultHighInputLatency,
+        d->defaultHighOutputLatency,
+        d->defaultSampleRate
+    );
+}
 
 
 /**
@@ -130,6 +191,10 @@ Program Entry
 */
 int main(int argc, char** argv)
 {
+    int hostApiIndex = -1;
+    int inputDeviceIndex = -1;
+    int outputDeviceIndex = -1;
+
     // [WO] probably dont have to be so strict, can just resolve them to nothing
     // parse command line arguments
     // figure out how many there are
@@ -143,77 +208,82 @@ int main(int argc, char** argv)
     // initialize the `amp` instance of the `ampValues_t` struct from cmd args
     // will be passed as the user data to PortAudio callback
     ampValues_t amp = { 0 };
-    setAmpGain(&amp, atoi(argv[1]));    // gain cmd arg
-    setAmpBass(&amp, atoi(argv[2]));    // bass cmd arg
-    setAmpTreble(&amp, atoi(argv[3]));  // treble cmd arg
-    setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
+
+    if (argc > 1)
+        setAmpGain(&amp, atoi(argv[1]));    // gain cmd arg
+    if (argc > 2)
+        setAmpBass(&amp, atoi(argv[2]));    // bass cmd arg
+    if (argc > 3)
+        setAmpTreble(&amp, atoi(argv[3]));  // treble cmd arg
+    if (argc > 4)
+        setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
+    if (argc > 5) 
+        hostApiIndex        = atoi(argv[5]);
+    if (argc > 6)
+        inputDeviceIndex    = atoi(argv[6]);
     
     // show the values
     printAmpValues(&amp);
+    printf("TEMP: { hostApiIndex: %d, inputDeviceIndex: %d, outputDeviceIndex: %d }\n",
+        hostApiIndex, inputDeviceIndex, outputDeviceIndex);
     printf("\n");
+
+
 
     // initalize portaudio
     Pa_Initialize();
-
     
     // [WO] maybe hidden by a switch (so that people can see what
     // APIs/Interfaces they can use w/ the program)?
 
     // enumerate host api info
-    PaHostApiInfo*   hinfo;
-    PaDeviceInfo*    dinfo;
-    int hostApiCount = Pa_GetHostApiCount();
+    PaHostApiInfo*  hinfo;
+    PaDeviceInfo*   dinfo;
+    PaDeviceInfo*   oinfo;
+    PaDeviceInfo*   iinfo;
 
+    int hostApiCount = Pa_GetHostApiCount();
+    
+    printf("Available host APIs & devices\n");
     printf("%d\n", hostApiCount);
     printf("\n");
 
     for (int i = 0; i < hostApiCount; i++) {
         hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(i);
+        printHostApiInfo(hinfo);
         // print host api info
-        printf(
-            "HostApiInfo: { "           \
-                "structVersion: %d, "   \
-                "type: %d, "            \
-                "name: %s, "            \
-                "deviceCount: %d, "
-            "}\n",
-            hinfo->structVersion,
-            hinfo->type,
-            hinfo->name,
-            hinfo->deviceCount
-        );
         // enumerate host api device info
         for (int j = 0; j < hinfo->deviceCount; j++) {
             dinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(j);
-            printf(
-                "DeviceInfo: { "                        \
-                    "structVersion: %d, "               \
-                    "name: %s, "                        \
-                    "maxInputChannels: %d, "            \
-                    "maxOutputChannels: %d, "           \
-                    "defaultLowInputLatency: %f, "      \
-                    "defaultLowOutpuLatency: %f, "      \
-                    "defaultHighInputLatency: %f, "     \
-                    "defaultHighOutputLatency: %f, "    \
-                    "defaultSampleRate: %f, "           \
-                "}\n",
-                dinfo->structVersion,
-                dinfo->name,
-                dinfo->maxInputChannels,
-                dinfo->maxOutputChannels,
-                dinfo->defaultLowInputLatency,
-                dinfo->defaultLowOutputLatency,
-                dinfo->defaultHighInputLatency,
-                dinfo->defaultHighOutputLatency,
-                dinfo->defaultSampleRate
-            );
+            printDeviceInfo(dinfo);
         }
         printf("\n");
     }
+    
+    printf("default host API & devices\n");
+    // show default hostapi
+    hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(Pa_GetDefaultHostApi());
+    printHostApiInfo(hinfo);
+    // show default input device
+    iinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultInputDevice());
+    printDeviceInfo(iinfo);
+    // show default output device
+    oinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice());
+    printDeviceInfo(oinfo);
 
+
+    
+    // [WO] info dump ends
+    // then program continues (no more info dump)
+
+    
+     
+   
 
     // terminate portaudio
     Pa_Terminate();
+
+
 
     return 0;
 
