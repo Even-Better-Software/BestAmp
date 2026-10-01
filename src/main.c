@@ -36,6 +36,9 @@ typedef struct BA_SYS_INFO {
     int outputDeviceIndex;
     int inputDeviceChannelIdx;
     int outputDeviceChannelIdx;
+    int latency;
+    double sampleRate;
+    long sampleFormat;
 } sysInfo_t;
 
 
@@ -91,7 +94,14 @@ void printDeviceInfo(PaDeviceInfo* d);
 /**
 BestAmp PortAudio callback definition.
 */
-
+PaStreamCallbackResult bestAmpCB(
+    const void* input,
+    void* output,
+    unsigned long frameCount,
+    const PaStreamCallbackTimeInfo* timeInfo,
+    PaStreamCallbackFlags statusFlags,
+    void* userData 
+);
 
 
 
@@ -190,16 +200,38 @@ void printDeviceInfo(PaDeviceInfo* d)
 }
 
 
+// BestAmp PortAudio callback implementation.
+PaStreamCallbackResult bestAmpCB(
+    const void* input,
+    void* output,
+    unsigned long frameCount,
+    const PaStreamCallbackTimeInfo* timeInfo,
+    PaStreamCallbackFlags statusFlags,
+    void* userData 
+)
+{
+    // [WO] todo, copy intput to output
+    return paContinue;
+}
+
+
 /**
 Program Entry
 */
 int main(int argc, char** argv)
 {
-    int hostApiIndex = -1;
-    int inputDeviceIndex = -1;
-    int outputDeviceIndex = -1;
-    int inputChannel = -1;          // channel idx of device (but what if multiple channels?)
-    int outputChannel = -1;         // channel idx of device (but what if multiple channels?)
+    PaStream* stream;
+    PaError e;
+
+    int hostApiIndex        = -1;
+    int inputDeviceIndex    = -1;
+    int outputDeviceIndex   = -1;
+    int inputChannel        = -1; // channel idx of device (but what if multiple channels?), no count
+    int outputChannel       = -1; // channel idx of device (but what if multiple channels?), no count
+    int latency             = -1;
+    double sampleRate       = -1;
+    long sampleFormat       = paFloat32;
+
 
     // [WO] probably dont have to be so strict, can just resolve them to nothing
     // parse command line arguments
@@ -210,7 +242,7 @@ int main(int argc, char** argv)
     // if (argc != BA_EXPECTED_ARGS)
     //     goto error;
     
-    // [WO] cmd args will be used for now
+    // [WO] cmd args will be used for nowhttps://github.com/Even-Better-Software/BestAmp/tree/main
     // initialize the `amp` instance of the `ampValues_t` struct from cmd args
     // will be passed as the user data to PortAudio callback
     ampValues_t amp = { 0 };
@@ -224,13 +256,19 @@ int main(int argc, char** argv)
     if (argc > 4)
         setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
     if (argc > 5) 
-        hostApiIndex        = atoi(argv[5]);
+        hostApiIndex = atoi(argv[5]);
     if (argc > 6)
-        inputDeviceIndex    = atoi(argv[6]);
+        inputDeviceIndex = atoi(argv[6]);
     if (argc > 7)
-        inputChannel        = atoi(argv[7]);
+        inputChannel = atoi(argv[7]);
     if (argc > 8)
-        outputChannel       = atoi(argv[8]);
+        outputChannel = atoi(argv[8]);
+    if (argc > 9)
+        latency = atoi(argv[9]);
+    if (argc > 10)
+        sampleRate = atof(argv[10]);
+    if (argc > 11)
+        sampleFormat = atol(argv[11]);      // format values
     
     // show the values
     printAmpValues(&amp);
@@ -239,10 +277,12 @@ int main(int argc, char** argv)
     printf("\n");
 
 
-
     // initalize portaudio
     Pa_Initialize();
-    
+    if (e != paNoError)
+        goto error;
+   
+ 
     // [WO] maybe hidden by a switch (so that people can see what
     // APIs/Interfaces they can use w/ the program)?
 
@@ -282,23 +322,48 @@ int main(int argc, char** argv)
     printDeviceInfo(oinfo);
 
 
+    // reduce system values to defaults (as per pa query results)
+    
+
     
     // [WO] info dump ends
     // then program continues (no more info dump)
 
-    
-     
+    // Create Input/Output stream parameters from CLI stuff
+    PaStreamParameters iStreamParams, oStreamParams;
+
+    iStreamParams.device = inputDeviceIndex;
+    iStreamParams.channelCount = inputChannel;
+    iStreamParams.suggestedLatency = latency;
+    iStreamParams.sampleFormat = sampleFormat;
+    iStreamParams.hostApiSpecificStreamInfo = NULL;
+
+    oStreamParams.device = outputDeviceIndex;
+    oStreamParams.channelCount = outputChannel;
+    oStreamParams.suggestedLatency = latency;
+    oStreamParams.sampleFormat = sampleFormat;
+    oStreamParams.hostApiSpecificStreamInfo = NULL;
+
+    // Is format supported test 
+    // Pa_IsFormatSupported
+    e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, sampleRate);
+    if (e != paNoError)
+        goto error;
+
+    // Pa_OpenStream(...)
+    // Pa_CloseStream(...)
    
+
 
     // terminate portaudio
     Pa_Terminate();
 
-
-
     return 0;
 
 error:
+    Pa_Terminate();
+
     printf(BA_HELP);
-    return 1;
+    return e;
 }
     
