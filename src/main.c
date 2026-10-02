@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <portaudio.h>
+
+#include "ba_amp.h"
 #include "ba_dsp.h"
-
-
-#define true    (1)
-#define false   (0)
+#include "ba_prefs.h"
+#include "ba_portaudio_helpers.h"
 
 
 #define BA_NAME "BestAmp.exe"
@@ -16,35 +16,7 @@
 "that are in the range 1-10, if a value is outside this range " \
 "it will be set to 1 (the minimum)\n"
 
-
 #define BA_EXPECTED_ARGS (5)
-#define BA_DIAL_MIN (1)
-#define BA_DIAL_MAX (10)
-
-
-
-typedef struct BA_AMP_VALUES {
-    int gain;           // 1-10, as per my amp
-    int bass;           // 1-10, as per my amp
-    int treble;         // 1-10, as per my amp
-    int power;          // 1-10, as per my amp
-} ampValues_t;
-
-
-typedef struct BA_HOST_PREFS {
-    int hostApiIdx;
-    int inDevIdx;
-    int outDevIdx;
-} hostPrefs_t;
-
-
-typedef struct BA_DEVICE_PREFS {
-    int inChanneln; 
-    int outChanneln;
-    double sampleRate;
-    int framesPerBuffer;
-    long sampleFormat;  // I would almost like to be able to cast to the thing at this
-} devPrefs_t;           // determine if you can store 'types' in variables (seems like a far fetched thing)
 
 
 /**
@@ -67,82 +39,6 @@ typedef struct BA_APP_INFO {
 
 
 /**
-print `ampValues_t` struct (to be used if the program is being debugged
-from the terminal)
-*/
-void printAmpValues(ampValues_t* a);
-
-/**
-Test that a value is between BA_DIAL_MIN & BA_DIAL_MAX
-*/
-int testAmpValue(int value);
-
-/**
-Sets the value of the `gain` property of the passed `ampValues_t` `a` to be
-the value of `gainValue` or 0 if `gainValue` fails `testAmpValue` check.
-*/
-void setAmpGain(ampValues_t* a, int gainValue);
-
-/**
-Sets the value of the `bass` property of the passed `ampValues_t` `a` to be the
-value of `bassValue` or 0 if `bassValue` fails `testAmpValue` check.
-*/
-void setAmpBass(ampValues_t* a, int bassValue);
-
-/**
-Sets the value of the `treble` property of the passed `ampValues_t` `a` to be the
-value of `trebleValue` or 0 of `trebleValue` fails `testAmpValue` check.
-*/
-void setAmpTreble(ampValues_t* a, int trebleValue);
-
-/**
-Sets the value of the `power` property of the passed `ampValues_t` `a` to be the
-value of `powerValue` or 0 if `powerValue` failas `testAmpValue` check.
-*/
-void setAmpPower(ampValues_t* a, int powerValue);
-
-
-void printHostPrefs(hostPrefs_t* s);
-
-/**
-Set all host preferences to sentinel of `-1`
-    This will tell the program to use the portaudio defaults for preferences
-*/
-void initHostPrefs(hostPrefs_t* s);
-
-// [WO] at-least right now, these aren't really doing anything
-// void setHostApiIdx(hostPrefs_t* s, int hostApiIndex);
-// void setHostInDevIdx(hostPrefs_t* s, int inDevIdx);
-// void setHostOutDevIdx(hostPrefs_t* s, int outDevIdx);
-
-
-void printDevPrefs(devPrefs_t* d);
-
-/**
-Set all device preferences to sentinel of `-1`.
-    This will tell the program to use the portaudio defaults for preferences
-*/
-void initDevPrefs(devPrefs_t* d);
-
-// [WO] at-least right now, these aren't really doing anything
-// void setDevInChanneln(devPrefs_t* d, int inChanneln);
-// void setDevOutChanneln(devPrefs_t* d, int outChanneln);
-// void setDevSampleRate(devPrefs_t* d, double sampleRate);
-// void setDevFramesPerBuffer(devPrefs_t* d, int framesPerBuffer);
-
-
-/**
-dump struct fields to stdout.
-*/
-void printHostApiInfo(PaHostApiInfo* h);
-
-/**
-dump struct fields to stdout.
-*/
-void printDeviceInfo(PaDeviceInfo* d);
-
-
-/**
 BestAmp PortAudio callback definition.
 */
 int bestAmpCB(
@@ -153,158 +49,6 @@ int bestAmpCB(
     PaStreamCallbackFlags statusFlags,
     void* userData 
 );
-
-
-
-void printAmpValues(ampValues_t* a)
-{
-    printf("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d }\n",
-        a->gain, a->bass, a->treble, a->power); 
-}
-
-void initAmpValues(ampValues_t* a)
-{
-    a->gain = 1;
-    a->bass = 1;
-    a->treble = 1;
-    a->power = 1;
-}
-
-int testAmpValue(int value)
-{
-    if (value < BA_DIAL_MIN || value > BA_DIAL_MAX)
-        return false;
-    return true;
-}
-
-void setAmpGain(ampValues_t* a, int gainValue)
-{
-    if (testAmpValue(gainValue))
-        a->gain = gainValue;
-    else
-        a->gain = BA_DIAL_MIN;
-}
-
-void setAmpBass(ampValues_t* a, int bassValue)
-{
-    if (testAmpValue(bassValue))
-        a->bass = bassValue;
-    else
-        a->bass = BA_DIAL_MIN;
-}
-
-void setAmpTreble(ampValues_t* a, int trebleValue)
-{
-    if (testAmpValue(trebleValue))
-        a->treble = trebleValue;
-    else
-        a->treble = BA_DIAL_MIN;
-}
-
-void setAmpPower(ampValues_t* a, int powerValue)
-{
-    if (testAmpValue(powerValue))
-        a->power = powerValue;
-    else
-        a->power = BA_DIAL_MIN;
-}
-
-
-void printHostPrefs(hostPrefs_t* h)
-{
-    printf(
-        "HostPrefs: {"          \
-            "hostIdx: %d, "     \
-            "inDevIdx: %d, "    \
-            "outDevIdx: %d, "   \
-        "}\n",
-        h->hostApiIdx,
-        h->inDevIdx,
-        h->outDevIdx
-    );
-}
-
-void initHostPrefs(hostPrefs_t* h)
-{
-    h->hostApiIdx = -1;
-    h->inDevIdx = -1;
-    h->outDevIdx = -1; 
-}
-
-
-void printDevPrefs(devPrefs_t* d)
-{
-    printf(
-        "DevPrefs: {"                   \
-            "inChanneln: %d, "          \
-            "outChanneln: %d, "         \
-            "sampleRate: %f, "          \
-            "sampleFormat: %ld, "       \
-            "framesPerBuffer: %d, "     \
-        "}\n",
-        d->inChanneln,
-        d->outChanneln,
-        d->sampleRate,
-        d->sampleFormat,
-        d->framesPerBuffer
-    );
-}
-
-void initDevPrefs(devPrefs_t* d)
-{
-    d->inChanneln = -1;
-    d->outChanneln = -1;
-    d->sampleRate = -1;
-    d->sampleFormat = -1;
-    d->framesPerBuffer = -1;
-}
-
-
-void printHostApiInfo(PaHostApiInfo* h)
-{
-    printf(
-        "HostApiInfo: { "               \
-            "structVersion: %d, "       \
-            "type: %d, "                \
-            "name: %s, "                \
-            "deviceCount: %d, "         \
-            "defaultInputDevice: %d, "  \
-            "defaultOutputDevice: %d, " \
-        "}\n",
-        h->structVersion,
-        h->type,
-        h->name,
-        h->deviceCount,
-        h->defaultInputDevice,
-        h->defaultOutputDevice
-    );
-}
-
-void printDeviceInfo(PaDeviceInfo* d)
-{
-    printf(
-        "DeviceInfo: { "                        \
-            "structVersion: %d, "               \
-            "name: %s, "                        \
-            "maxInputChannels: %d, "            \
-            "maxOutputChannels: %d, "           \
-            "defaultLowInputLatency: %f, "      \
-            "defaultLowOutpuLatency: %f, "      \
-            "defaultHighInputLatency: %f, "     \
-            "defaultHighOutputLatency: %f, "    \
-            "defaultSampleRate: %f, "           \
-        "}\n",
-        d->structVersion,
-        d->name,
-        d->maxInputChannels,
-        d->maxOutputChannels,
-        d->defaultLowInputLatency,
-        d->defaultLowOutputLatency,
-        d->defaultHighInputLatency,
-        d->defaultHighOutputLatency,
-        d->defaultSampleRate
-    );
-}
 
 
 // BestAmp PortAudio callback implementation.
@@ -322,6 +66,8 @@ int bestAmpCB(
     // sysInfo_t* sysInfo = (sysInfo_t*)userData;
     appInfo_t* appInfo = (appInfo_t*)userData;
     // (void)userData;
+    (void)timeInfo;
+    (void)statusFlags;
 
     // [WO] todo copy input to output
     // where 2 is the number of channels
