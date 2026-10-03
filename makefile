@@ -22,11 +22,16 @@ BA_PORTAUDIO_HELPERS_O = $(BUILD_DIR)/ba_portaudio_helpers.o
 BA_TCP		= $(SRC_DIR)/ba_tcp.c
 BA_TCP_O    = $(BUILD_DIR)/ba_tcp.o
 
+STATS           = $(SRC_DIR)/stats.c
+STATS_TARGET    = $(BUILD_DIR)/stats.exe
+
 DLL_SRC     = external/portaudio/bin/libportaudio.dll
 DLL_DEST    = $(BUILD_DIR)/libportaudio.dll
 
 
 all: $(TARGET) $(DLL_DEST)
+
+stats: $(STATS_TARGET) $(DLL_DEST)
 
 
 $(BUILD_DIR):
@@ -51,6 +56,10 @@ $(BA_TCP_O): $(BA_TCP) | $(BUILD_DIR)
 
 $(TARGET): $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_TCP_O) | $(BUILD_DIR)
 > $(CC) $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_TCP_O) -o $@ $(CFLAGS) $(LDFLAGS)
+
+
+$(STATS_TARGET): $(STATS) $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
+> $(CC) $(STATS) $(BA_PORTAUDIO_HELPERS_O) -o $@ $(CFLAGS) $(LDFLAGS)
 
 
 $(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
