@@ -142,49 +142,6 @@ int main(int argc, char** argv)
     e = Pa_Initialize();
     if (e != paNoError)
         goto error;
-   
-    
-    // [WO] THIS DOES NOT HAVE TO BE PART OF THIS PROGRAM AT ALL
-    // [WO] maybe hidden by a switch (so that people can see what
-    // APIs/Interfaces they can use w/ the program)?
-
-    // enumerate host api info
-    PaHostApiInfo*  hinfo;
-    PaDeviceInfo*   dinfo;
-    PaDeviceInfo*   oinfo;
-    PaDeviceInfo*   iinfo;
-
-    int hostApiCount = Pa_GetHostApiCount();
-    
-    printf("Available host APIs\n");
-    printf("%d\n", hostApiCount);
-    printf("\n");
-
-    for (int i = 0; i < hostApiCount; i++) {
-        hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(i);
-        printHostApiInfo(hinfo);
-        // print host api info
-        // enumerate host api device info
-        for (int j = 0; j < hinfo->deviceCount; j++) {
-            dinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(j);
-            printDeviceInfo(dinfo);
-        }
-        printf("\n");
-    }
-    
-    printf("default host API & devices\n");
-    // show default hostapi
-    hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(Pa_GetDefaultHostApi());
-    printHostApiInfo(hinfo);
-    // show default input device
-    iinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultInputDevice());
-    printDeviceInfo(iinfo);
-    // show default output device
-    oinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice());
-    printDeviceInfo(oinfo);
-    printf("\n");
-    // [WO] END OF THE PART THAT IS IGNORABLE
-
 
     // coalesce to system defaults (mostly)
     if (hostPrefs.hostApiIdx < 0)
