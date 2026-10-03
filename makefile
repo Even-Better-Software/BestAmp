@@ -49,5 +49,5 @@ $(TARGET): $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_
 
 
 $(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
-> cp $(DLL_SRC) $(DLL_DEST)
+> copy $(DLL_SRC) $(DLL_DEST)
 
