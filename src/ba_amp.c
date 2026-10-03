@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "ba_common.h"
 #include "ba_amp.h"
+#include "ba_dsp.h"
 
 void printAmpValues(ampValues_t* a)
 {
@@ -14,6 +15,8 @@ void initAmpValues(ampValues_t* a)
     a->bass = 1;
     a->treble = 1;
     a->power = 1;
+    biQuadFilter_init(&a->bqf_bass);
+    biQuadFilter_init(&a->bqf_treble);
 }
 
 int testAmpValue(int value)
@@ -25,24 +28,27 @@ int testAmpValue(int value)
 
 void setAmpGain(ampValues_t* a, int gainValue)
 {
-    if (testAmpValue(gainValue))
+    if (testAmpValue(gainValue)) {
         a->gain = gainValue;
+    }
     else
         a->gain = BA_DIAL_MIN;
 }
 
 void setAmpBass(ampValues_t* a, int bassValue)
 {
-    if (testAmpValue(bassValue))
+    if (testAmpValue(bassValue)) {
         a->bass = bassValue;
+    }
     else
         a->bass = BA_DIAL_MIN;
 }
 
 void setAmpTreble(ampValues_t* a, int trebleValue)
 {
-    if (testAmpValue(trebleValue))
+    if (testAmpValue(trebleValue)) {
         a->treble = trebleValue;
+    }
     else
         a->treble = BA_DIAL_MIN;
 }

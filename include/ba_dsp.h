@@ -53,14 +53,14 @@ for the specified biQuad.
 float biQuadFilter_process(biQuadFilter_t* bf, float x);
 
 /**
-To be called when amp bass dial is modified.
+To be called when amp treble dial is modified.
     re-computes highShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_highShelf(biQuadFilter_t* bf,
                             float dbGain, float sampleFreq);
 
 /**
-To be called when amp treble dial is modified.
+To be called when amp bass dial is modified.
     re-computes lowShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_lowShelf( biQuadFilter_t* bf,

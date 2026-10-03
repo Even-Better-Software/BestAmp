@@ -1,6 +1,8 @@
 #ifndef BA_AMP
 #define BA_AMP
 
+#include "ba_dsp.h"
+
 
 #define BA_DIAL_MIN (1)
 #define BA_DIAL_MAX (10)
@@ -11,6 +13,8 @@ typedef struct BA_AMP_VALUES {
     int bass;           // 1-10, as per my amp
     int treble;         // 1-10, as per my amp
     int power;          // 1-10, as per my amp
+    biQuadFilter_t bqf_bass;
+    biQuadFilter_t bqf_treble;
 } ampValues_t;
 
 
