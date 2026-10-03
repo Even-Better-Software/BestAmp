@@ -3,7 +3,7 @@
 CC      = gcc
 CFLAGS  = -Wall -Wextra -Iinclude -Iexternal/portaudio/include
 
-LDFLAGS = -Lexternal/portaudio/lib -lportaudio
+LDFLAGS = -Lexternal/portaudio/lib -lportaudio -lws2_32
 
 BUILD_DIR   = build
 TARGET      = $(BUILD_DIR)/BestAmp.exe
@@ -19,6 +19,8 @@ BA_PREFS    = $(SRC_DIR)/ba_prefs.c
 BA_PREFS_O  = $(BUILD_DIR)/ba_prefs.o
 BA_PORTAUDIO_HELPERS = $(SRC_DIR)/ba_portaudio_helpers.c
 BA_PORTAUDIO_HELPERS_O = $(BUILD_DIR)/ba_portaudio_helpers.o
+BA_TCP		= $(SRC_DIR)/ba_tcp.c
+BA_TCP_O    = $(BUILD_DIR)/ba_tcp.o
 
 DLL_SRC     = external/portaudio/bin/libportaudio.dll
 DLL_DEST    = $(BUILD_DIR)/libportaudio.dll
@@ -43,9 +45,12 @@ $(BA_PREFS_O): $(BA_PREFS) | $(BUILD_DIR)
 $(BA_PORTAUDIO_HELPERS_O): $(BA_PORTAUDIO_HELPERS) | $(BUILD)
 > $(CC) $(BA_PORTAUDIO_HELPERS) -o $(BA_PORTAUDIO_HELPERS_O) -c $(CFLAGS)
 
+$(BA_TCP_O): $(BA_TCP) | $(BUILD_DIR)
+> $(CC) $(BA_TCP) -o $(BA_TCP_O) -c $(CFLAGS)
 
-$(TARGET): $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
-> $(CC) $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) -o $@ $(CFLAGS) $(LDFLAGS)
+
+$(TARGET): $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_TCP_O) | $(BUILD_DIR)
+> $(CC) $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_TCP_O) -o $@ $(CFLAGS) $(LDFLAGS)
 
 
 $(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
