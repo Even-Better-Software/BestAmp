@@ -62,6 +62,7 @@ int test() {
         WSACleanup();
         return 1;
     }
+    printf("Listening on port %s...\n", PORT);
 
     // accept a client
     SOCKET client_sock;
@@ -72,6 +73,7 @@ int test() {
         WSACleanup();
         return 1;
     }
+    printf("Client connected.\n");
 
     // no need to keep the original socket anymore, we just want the one client socket
     closesocket(sock);
@@ -107,6 +109,8 @@ int test() {
     status = shutdown(client_sock, SD_SEND); // shutdown can fail but there's nothing to do
     closesocket(client_sock);
     WSACleanup();
+
+    printf("TCP server closed cleanly.\n");
 
     return 0;
 }

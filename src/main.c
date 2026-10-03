@@ -279,6 +279,10 @@ int main(int argc, char** argv)
     // terminate portaudio
     Pa_Terminate();
 
+    // tcp test (remove later)
+    int test_res = test();
+    printf("tcp test result: %d\n", test_res);
+
     return 0;
 
 error:
