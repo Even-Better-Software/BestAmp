@@ -31,6 +31,24 @@ during the process function.
 but its late & I dont want to work on this anymore.
 */
 
+void biQuadFilter_lowShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
+{
+    float A, w0, a, sinw0, cosw0;
+    A       = powf(10, dbGain/40);
+    w0      = TWOPI*(BA_BASS_CENTER_FREQ/sampleFreq);
+    sinw0   = sinf(w0);
+    cosw0   = cosf(w0);
+    a       = (sinw0/2)*sqrtf(2); // I simplified this for S = 1
+
+    bf->a0 = (A+1) + (A-1)*cosw0 + 2*sqrtf(A)*a;
+
+    bf->b0 = ( A*((A+1)-(A-1)*cosw0+2*sqrtf(A)*a) ) / bf->a0;
+    bf->b1 = ( 2*A*((A-1)-(A+1)*cosw0) ) / bf->a0;
+    bf->b2 = ( A*((A+1)-(A-1)*cosw0-2*sqrtf(A)*a) ) / bf->a0;
+    bf->a1 = ( -2*((A-1)+(A+1)*cosw0) ) / bf->a0;
+    bf->a2 = ( (A+1)+(A-1)*cosw0-2*sqrtf(A)*a ) / bf->a0;
+}
+
 void biQuadFilter_highShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
 {
     float A, w0, a, sinw0, cosw0;
@@ -40,33 +58,12 @@ void biQuadFilter_highShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
     cosw0   = cosf(w0);
     a       = (sinw0/2)*sqrtf(2); // I simplified this for S = 1
     
-    // TODO
-    bf->a0 = ;
+    bf->a0 = (A+1) - (A-1)*cosw0 + 2*sqrtf(A)*a;
 
-    bf->b0 = ( A*((A+1)+(A-1)*cosw0+2*sqrtf(A)*a) );
-    bf->b1 = ( -2*A*((A-1)+(A+1)*cosw0) );
-    bf->b2 = ( A*((A+1)+(A-1)*cosw0-2*sqrtf(A)*a) );
-    bf->a1 = ( 2*((A-1)-(A+1)*cosw0) );
-    bf->a2 = ( (A+1)-(A-1)*cosw0-2*sqrtf(A)*a );
-}
-
-
-void biQuadFilter_lowShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
-{
-    float A, w0, a, sinw0, cosw0;
-    A       = powf(10, dbGain/40);
-    w0      = TWOPI*(BA_BASS_CENTER_FREQ/sampleFreq);
-    sinw0   = sinf(w0);
-    cosw0   = cosf(w0);
-    a       = (sinw0/2)*sqrtf(2); // I simplified this for S = 1
-    
-    // TODO
-    bf->a0 = ;
-
-    bf->b0 = A*((A+1)-(A-1)*cosw0+2*sqrtf(A)*a);
-    bf->b1 = 2*A*((A-1)-(A+1)*cosw0);
-    bf->b2 = A*((A+1)-(A-1)*cosw0-2*sqrtf(A)*a);
-    bf->a1 = -2*((A-1)+(A+1)*cosw0);
-    bf->a2 = (A+1)+(A-1)*cosw0-2*sqrtf(A)*a;
+    bf->b0 = ( A*((A+1)+(A-1)*cosw0+2*sqrtf(A)*a) ) / bf->a0;
+    bf->b1 = ( -2*A*((A-1)+(A+1)*cosw0) ) / bf->a0;
+    bf->b2 = ( A*((A+1)+(A-1)*cosw0-2*sqrtf(A)*a) ) / bf->a0;
+    bf->a1 = ( 2*((A-1)-(A+1)*cosw0) ) / bf->a0;
+    bf->a2 = ( (A+1)-(A-1)*cosw0-2*sqrtf(A)*a ) / bf->a0;
 }
 
