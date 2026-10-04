@@ -71,9 +71,23 @@ int bestAmpCB(
 
     // [WO] todo copy input to output
     // where 2 is the number of channels
+    float y;
     for (unsigned int i = 0; i < framesPerBuffer * appInfo->devPrefs->inChanneln; i++)
     {
-        *out++ = appInfo->ampValues->gain * *(in++);
+        y = appInfo->ampValues->gain * *in;         // pre-amplification
+
+        y = biQuadFilter_process(
+            &appInfo->ampValues->bqf_bass, y);      // execute bass biQuad filter process
+        y = biQuadFilter_process(
+            &appInfo->ampValues->bqf_treble, y);    // execute treble biQuad filter process
+
+        y = appInfo->ampValues->power * y;          // power-amplification
+
+        *out = y; // write the processed sample to the output buffer
+        
+        // advance pointers 
+        out++;
+        in++;
     }
 
     return paContinue;
@@ -131,7 +145,8 @@ int main(int argc, char** argv)
         // devPrefs.sampleFormat = atol(argv[11]);  // device sample format
     if (argc > 12)
         devPrefs.framesPerBuffer = atoi(argv[12]);  // device frames per buffer
-    
+   
+ 
     // show the values
     printAmpValues(&amp);
     printHostPrefs(&hostPrefs);
@@ -181,6 +196,7 @@ int main(int argc, char** argv)
  
     printHostPrefs(&hostPrefs);
     printDevPrefs(&devPrefs);
+
     
     // Create Input/Output stream parameters from CLI stuff
     PaStreamParameters iStreamParams, oStreamParams;
@@ -204,6 +220,16 @@ int main(int argc, char** argv)
         printf("Format supported error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
     }
+
+    // [WO] whenever we are receiving input from the tcp connection
+    // if the message specifies a new value for bass or treble
+    // the biQuadFilter will beed to have its coeffecients recalculated
+    // meaning that one of these functions will need to be invoked
+
+    // for now, calculate biquad coeffecients here
+    biQuadFilter_lowShelf(&amp.bqf_bass, (float)amp.bass, devPrefs.sampleRate);
+    biQuadFilter_highShelf(&amp.bqf_treble, (float)amp.treble, devPrefs.sampleRate);
+
 
     e = Pa_OpenStream(  &stream,
                         &iStreamParams,
