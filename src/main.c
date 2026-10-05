@@ -5,7 +5,6 @@
 #include "ba_amp.h"
 #include "ba_dsp.h"
 #include "ba_prefs.h"
-#include "ba_portaudio_helpers.h"
 
 
 #define BA_NAME "BestAmp.exe"
