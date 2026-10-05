@@ -31,6 +31,8 @@ void printBaPrefs(baPrefs_t* prefs)
 
 void initBaPrefs(baPrefs_t* prefs)
 {
+    prefs->hostApi = NULL;
+    prefs->inDev = prefs->outDev = NULL;
     prefs->hostApiIdx = -1;
     prefs->inDevIdx = -1;
     prefs->outDevIdx = -1;
@@ -45,7 +47,7 @@ void initBaPrefs(baPrefs_t* prefs)
 int initBaPrefsToPaDefaults(baPrefs_t* prefs)
 {
     PaHostApiIndex defaultHostApiIdx;
-    // PaHostApiInfo* defaultHostApi;
+    PaHostApiInfo* defaultHostApi;
 
     PaDeviceIndex defaultiDevIdx, defaultoDevIdx;
     PaDeviceInfo* defaultiDev;
@@ -58,12 +60,13 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
         return -1;
     }
     prefs->hostApiIdx = defaultHostApiIdx;
-    // defaultHostApi = (PaHostApiInfo*)Pa_GetHostApiInfo(prefs->hostApiIdx);
-    // if (defaultHostApi == NULL) {
-    //    fprintf(stderr, BA_NULL_HOST_ERROR_LOG,
-    //        __FILE_NAME__, __LINE__, prefs->hostApiIdx);
-    //    return -1;
-    // }
+    defaultHostApi = (PaHostApiInfo*)Pa_GetHostApiInfo(prefs->hostApiIdx);
+    if (defaultHostApi == NULL) {
+        fprintf(stderr, BA_NULL_HOST_ERROR_LOG,
+            __FILE_NAME__, __LINE__, prefs->hostApiIdx);
+        return -1;
+    }
+    prefs->hostApi = defaultHostApi;
 
     defaultiDevIdx = Pa_GetDefaultInputDevice();
     if (defaultiDevIdx < 0) {
@@ -78,6 +81,7 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
             __FILE_NAME__, __LINE__, defaultiDevIdx);
         return -1;
     }
+    prefs->inDev = defaultiDev;
 
     defaultoDevIdx = Pa_GetDefaultOutputDevice();
     if (defaultoDevIdx < 0) {
@@ -92,6 +96,7 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
             __FILE_NAME__, __LINE__, defaultoDevIdx);
         return -1;
     }
+    prefs->outDev = defaultoDev;
     
     prefs->inChanneln = defaultiDev->maxInputChannels;
     prefs->outChanneln = defaultoDev->maxOutputChannels;
@@ -109,7 +114,7 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
 int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
 {
     PaHostApiIndex hostApiIdx;
-    // PaHostApiInfo* hostApi;
+    PaHostApiInfo* hostApi;
 
     PaDeviceIndex iDevIdx, oDevIdx;
     PaDeviceInfo* iDev;
@@ -124,6 +129,13 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
         }
         prefs->hostApiIdx = hostApiIdx;
     }
+    hostApi = (PaHostApiInfo*)Pa_GetHostApiInfo(prefs->hostApiIdx);
+    if (hostApi == NULL) {
+        fprintf(stderr, BA_NULL_HOST_ERROR_LOG,
+            __FILE_NAME__, __LINE__, prefs->hostApiIdx);
+        return -1;
+    }
+    prefs->hostApi = hostApi;
 
     if (prefs->inDevIdx < 0) {
         iDevIdx = Pa_GetDefaultInputDevice();
@@ -140,6 +152,7 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
             __FILE_NAME__, __LINE__, prefs->inDevIdx);
         return -1;
     }
+    prefs->inDev = iDev;
 
     if (prefs->outDevIdx < 0) {
         oDevIdx = Pa_GetDefaultOutputDevice();
@@ -156,6 +169,7 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
             __FILE_NAME__, __LINE__, oDevIdx);
         return -1;
     }
+    prefs->outDev = oDev;
     
     if (prefs->inChanneln < 0)
         prefs->inChanneln = iDev->maxInputChannels;

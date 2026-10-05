@@ -11,8 +11,11 @@
 
 typedef struct BA_PREFS {
     int hostApiIdx;
+    PaHostApiInfo* hostApi;
     int inDevIdx;
+    PaDeviceInfo* inDev;
     int outDevIdx;
+    PaDeviceInfo* outDev;
     int inChanneln;
     int outChanneln;
     float sampleRate;

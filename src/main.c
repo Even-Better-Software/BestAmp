@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <portaudio.h>
 
+#include "ba_common.h"
 #include "ba_amp.h"
 #include "ba_dsp.h"
+#include "ba_portaudio_helpers.h"
 #include "ba_prefs.h"
 
 
@@ -30,9 +32,6 @@ Container for application state.
 typedef struct BA_APP_INFO {
     ampValues_t* ampValues;
     baPrefs_t* baPrefs;
-    PaHostApiInfo* hostApiInfo;
-    PaDeviceInfo* inDevInfo;
-    PaDeviceInfo* outDevInfo;
 } appInfo_t;
 
 
@@ -141,7 +140,9 @@ int main(int argc, char** argv)
    
  
     // show the values
+    printf(INFO);
     printAmpValues(&amp);
+    printf(INFO);
     printBaPrefs(&prefs);
     printf("\n");
 
@@ -167,20 +168,27 @@ int main(int argc, char** argv)
         goto error;
     }
 
+    printf(INFO);
     printBaPrefs(&prefs);
+    printf(INFO);
+    printHostApiInfo(prefs.hostApi);
+    printf(INFO);
+    printDeviceInfo(prefs.inDev);
+    printf(INFO);
+    printDeviceInfo(prefs.outDev);
 
     // Create Input/Output stream parameters
     PaStreamParameters iStreamParams, oStreamParams;
 
     iStreamParams.device = prefs.inDevIdx;
     iStreamParams.channelCount = prefs.inChanneln;
-    iStreamParams.suggestedLatency = appInfo.inDevInfo->defaultLowInputLatency;
+    iStreamParams.suggestedLatency = prefs.inDev->defaultLowInputLatency;
     iStreamParams.sampleFormat = prefs.sampleFormat;
     iStreamParams.hostApiSpecificStreamInfo = NULL;
 
     oStreamParams.device = prefs.outDevIdx;
     oStreamParams.channelCount = prefs.outChanneln;
-    oStreamParams.suggestedLatency = appInfo.outDevInfo->defaultLowOutputLatency;
+    oStreamParams.suggestedLatency = prefs.outDev->defaultLowOutputLatency;
     oStreamParams.sampleFormat = prefs.sampleFormat;
     oStreamParams.hostApiSpecificStreamInfo = NULL;
 
@@ -188,7 +196,7 @@ int main(int argc, char** argv)
     // Pa_IsFormatSupported
     e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, prefs.sampleRate);
     if (e != paNoError) {
-        printf("Format supported error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
 
@@ -210,12 +218,12 @@ int main(int argc, char** argv)
                         bestAmpCB,
                         &appInfo );
     if (e != paNoError) {
-        printf("Open stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
     e = Pa_StartStream(stream);
     if (e != paNoError) {
-        printf("Start stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
 
