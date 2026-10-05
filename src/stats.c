@@ -29,59 +29,59 @@ int main()
 
     int hostApiCount = Pa_GetHostApiCount();
     
-    printf(INFO "Available host APIs\n");
-    printf(INFO "%d\n", hostApiCount);
+    printf(BA_INFO "Available host APIs\n");
+    printf(BA_INFO "%d\n", hostApiCount);
     printf("\n");
 
     for (int i = 0; i < hostApiCount; i++) {
         hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(i);
         if (hinfo == NULL) {
-            printf(ERROR "host w/ index %d is NULL, skipping.\n", i);
+            printf(BA_ERROR "host w/ index %d is NULL, skipping.\n", i);
             continue;
         }
-        printf(INFO);
+        printf(BA_INFO);
         printHostApiInfo(hinfo);
         // print host api info
         // enumerate host api device info
         for (int j = 0; j < hinfo->deviceCount; j++) {
             dinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(j);
             if (dinfo == NULL) {
-                printf(ERROR "device w/ index %d is NULL, skipping.\n", j);
+                printf(BA_ERROR "device w/ index %d is NULL, skipping.\n", j);
                 continue;
             }
-            printf(INFO);
+            printf(BA_INFO);
             printDeviceInfo(dinfo);
         }
         printf("\n");
     }
     
-    printf(INFO "default host API & devices\n");
+    printf(BA_INFO "default host API & devices\n");
 
     // show default hostapi
     hinfo = (PaHostApiInfo*)Pa_GetHostApiInfo(Pa_GetDefaultHostApi());
     if (hinfo == NULL) {
-        printf(ERROR "default host API is NULL, error");
+        printf(BA_ERROR "default host API is NULL, error");
         goto error;
     }
-    printf(INFO);
+    printf(BA_INFO);
     printHostApiInfo(hinfo);
 
     // show default input device
     iinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultInputDevice());
     if (iinfo == NULL) {
-        printf(ERROR "default input device is NULL, error exit");
+        printf(BA_ERROR "default input device is NULL, error exit");
         goto error;
     }
-    printf(INFO);
+    printf(BA_INFO);
     printDeviceInfo(iinfo);
 
     // show default output device
     oinfo = (PaDeviceInfo*)Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice());
     if (oinfo == NULL) {
-        printf(ERROR "default output device is NULL, error exit");
+        printf(BA_ERROR "default output device is NULL, error exit");
         goto error;
     }
-    printf(INFO);
+    printf(BA_INFO);
     printDeviceInfo(oinfo);
     printf("\n");
 

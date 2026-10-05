@@ -11,16 +11,16 @@
 
 typedef struct BA_PREFS {
     int hostApiIdx;
-    PaHostApiInfo* hostApi;
     int inDevIdx;
-    PaDeviceInfo* inDev;
     int outDevIdx;
-    PaDeviceInfo* outDev;
     int inChanneln;
     int outChanneln;
-    float sampleRate;
     int framesPerBuffer;
+    float sampleRate;
     long sampleFormat;  // I would almost like to be able to cast to the thing at this
+    PaHostApiInfo* hostApi;
+    PaDeviceInfo* outDev;
+    PaDeviceInfo* inDev;
 } baPrefs_t;
 
 

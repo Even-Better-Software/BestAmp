@@ -4,8 +4,6 @@
 #include <portaudio.h>
 
 
-
-
 /**
 dump struct fields to stdout.
 */
@@ -18,3 +16,4 @@ void printDeviceInfo(PaDeviceInfo* d);
 
 
 #endif
+
