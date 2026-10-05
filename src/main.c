@@ -245,8 +245,8 @@ int main(int argc, char** argv)
     Pa_Terminate();
 
     // tcp test (remove later)
-    int test_res = test();
-    printf("tcp test result: %d\n", test_res);
+    // int test_res = test();
+    // printf("tcp test result: %d\n", test_res);
 
     return 0;
 
