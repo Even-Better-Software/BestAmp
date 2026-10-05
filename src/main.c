@@ -7,6 +7,7 @@
 #include "ba_dsp.h"
 #include "ba_portaudio_helpers.h"
 #include "ba_prefs.h"
+#include "ba_tcp.h"
 
 
 #define BA_NAME "BestAmp.exe"
@@ -242,6 +243,10 @@ int main(int argc, char** argv)
    
     // terminate portaudio
     Pa_Terminate();
+
+    // tcp test (remove later)
+    // int test_res = test();
+    // printf("tcp test result: %d\n", test_res);
 
     return 0;
 
