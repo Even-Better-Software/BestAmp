@@ -20,8 +20,13 @@ coeffecient is in the denominator thus useless if its 1, so it is omitted.
 continue w/ derivations based off these coeffecient normalizations
 */
 
-#define BA_BASS_CENTER_FREQ (200)       // apparently a common frequency value for low shelving
-#define BA_TREB_CENTER_FREQ (5000)      // apparently a common frequency value for high shelving
+// #define BA_BASS_CENTER_FREQ (200)       // apparently a common frequency value for low shelving
+// #define BA_TREB_CENTER_FREQ (5000)      // apparently a common frequency value for high shelving
+// #define BA_BASS_CENTER_FREQ (300)
+#define BA_TREB_CENTER_FREQ (4800)
+#define BA_BASS_CENTER_FREQ (220)
+// #define BA_TREB_CENTER_FREQ (5000)      // apparently a common frequency value for high shelving
+
 #define TWOPI (2*3.14158265359)         // probably enough precision but idk
 
 
@@ -53,14 +58,14 @@ for the specified biQuad.
 float biQuadFilter_process(biQuadFilter_t* bf, float x);
 
 /**
-To be called when amp bass dial is modified.
+To be called when amp treble dial is modified.
     re-computes highShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_highShelf(biQuadFilter_t* bf,
                             float dbGain, float sampleFreq);
 
 /**
-To be called when amp treble dial is modified.
+To be called when amp bass dial is modified.
     re-computes lowShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_lowShelf( biQuadFilter_t* bf,

@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <portaudio.h>
 
+#include "ba_common.h"
 #include "ba_amp.h"
 #include "ba_dsp.h"
-#include "ba_prefs.h"
 #include "ba_portaudio_helpers.h"
+#include "ba_prefs.h"
 #include "ba_tcp.h"
 
 
@@ -31,11 +32,7 @@ Container for application state.
 */
 typedef struct BA_APP_INFO {
     ampValues_t* ampValues;
-    hostPrefs_t* hostPrefs;
-    devPrefs_t* devPrefs;
-    PaHostApiInfo* hostApiInfo;
-    PaDeviceInfo* inDevInfo;
-    PaDeviceInfo* outDevInfo;
+    baPrefs_t* baPrefs;
 } appInfo_t;
 
 
@@ -62,8 +59,8 @@ int bestAmpCB(
     void* userData 
 )
 {
-    const float* in = (float*)input;        // this has to be derived from the chosen buffer format
-    float* out = (float*)output;            // this has to be derived from the chosen buffer format
+    const float* in = (float*)input; // this has to be derived from the chosen buffer format
+    float* out = (float*)output; // this has to be derived from the chosen buffer format
     // sysInfo_t* sysInfo = (sysInfo_t*)userData;
     appInfo_t* appInfo = (appInfo_t*)userData;
     // (void)userData;
@@ -72,9 +69,23 @@ int bestAmpCB(
 
     // [WO] todo copy input to output
     // where 2 is the number of channels
-    for (unsigned int i = 0; i < framesPerBuffer * appInfo->devPrefs->inChanneln; i++)
+    float y;
+    for (unsigned int i = 0; i < framesPerBuffer * appInfo->baPrefs->inChanneln; i++)
     {
-        *out++ = appInfo->ampValues->gain * *(in++);
+        y = appInfo->ampValues->gain * *in;         // pre-amplification
+
+        y = biQuadFilter_process(
+            &appInfo->ampValues->bqf_bass, y);      // execute bass biQuad filter process
+        y = biQuadFilter_process(
+            &appInfo->ampValues->bqf_treble, y);    // execute treble biQuad filter process
+
+        y = appInfo->ampValues->power * y;          // power-amplification
+
+        *out = y; // write the processed sample to the output buffer
+        
+        // advance pointers 
+        out++;
+        in++;
     }
 
     return paContinue;
@@ -90,19 +101,15 @@ int main(int argc, char** argv)
     PaError e;
 
     ampValues_t amp = { 0 };
-    hostPrefs_t hostPrefs = { 0 };
-    devPrefs_t devPrefs = { 0 };
+    baPrefs_t prefs = { 0 };
     
     // app info state container
     appInfo_t appInfo = { 0 };
     appInfo.ampValues = &amp;
-    appInfo.devPrefs = &devPrefs;
-    appInfo.hostPrefs = &hostPrefs;
+    appInfo.baPrefs = &prefs;
 
     initAmpValues(&amp); // BestAmp defaults (1,1,1,1)
-    initHostPrefs(&hostPrefs);
-    initDevPrefs(&devPrefs);
-
+    initBaPrefs(&prefs);
 
     // parse CLI arguments
     if (argc > 1)
@@ -115,28 +122,29 @@ int main(int argc, char** argv)
         setAmpPower(&amp, atoi(argv[4]));   // power cmd arg
 
     if (argc > 5) 
-        hostPrefs.hostApiIdx = atoi(argv[5]);   // host api index
+        prefs.hostApiIdx = atoi(argv[5]);   // host api index
     if (argc > 6)
-        hostPrefs.inDevIdx = atoi(argv[6]);     // host input device index
+        prefs.inDevIdx = atoi(argv[6]);     // host input device index
     if (argc > 7)
-        hostPrefs.outDevIdx = atoi(argv[7]);    // host output device index
-
+        prefs.outDevIdx = atoi(argv[7]);    // host output device index
     if (argc > 8)
-        devPrefs.inChanneln = atoi(argv[8]);    // device input channel number
+        prefs.inChanneln = atoi(argv[8]);    // device input channel number
     if (argc > 9)
-        devPrefs.outChanneln = atoi(argv[9]);   // device output channel number
+        prefs.outChanneln = atoi(argv[9]);   // device output channel number
     if (argc > 10)
-        devPrefs.sampleRate = atof(argv[10]);       // device sample rate
+        prefs.sampleRate = atof(argv[10]);       // device sample rate
     if (argc > 11)
-        devPrefs.sampleFormat = paFloat32;          // [WO] for now its always this
-        // devPrefs.sampleFormat = atol(argv[11]);  // device sample format
+        prefs.sampleFormat = paFloat32;          // [WO] for now its always this
+        // prefs.sampleFormat = atol(argv[11]);  // device sample format
     if (argc > 12)
-        devPrefs.framesPerBuffer = atoi(argv[12]);  // device frames per buffer
-    
+        prefs.framesPerBuffer = atoi(argv[12]);  // device frames per buffer
+   
+ 
     // show the values
+    printf(INFO);
     printAmpValues(&amp);
-    printHostPrefs(&hostPrefs);
-    printDevPrefs(&devPrefs);
+    printf(INFO);
+    printBaPrefs(&prefs);
     printf("\n");
 
     // initalize portaudio
@@ -144,83 +152,79 @@ int main(int argc, char** argv)
     if (e != paNoError)
         goto error;
 
+
+    // [WO] TCP connection loop begins here
+
+
+    // Logic -> request to update system settings
+    // resetup the entire thing (re-construct the portaudio stream)
+    // request to update amp settings
+    // only have to re-calculate amp biquad coeffecients, stream can
+    // possibly remain running
+
     // coalesce to system defaults (mostly)
-    if (hostPrefs.hostApiIdx < 0)
-        hostPrefs.hostApiIdx = Pa_GetDefaultHostApi();
-    appInfo.hostApiInfo = (PaHostApiInfo*)Pa_GetHostApiInfo(hostPrefs.hostApiIdx);
-    if (appInfo.hostApiInfo == NULL) {
-        printf("\e[31merror getting host api info\e[0m\n");
+    e = coalesceBaPrefsToPaDefaults(&prefs);
+    if (e != 1) {
+        printf("\e[31merror coalescing user preferences\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
-    if (hostPrefs.inDevIdx < 0)
-        hostPrefs.inDevIdx = Pa_GetDefaultInputDevice();
-    appInfo.inDevInfo = (PaDeviceInfo*)Pa_GetDeviceInfo(hostPrefs.inDevIdx);
-    if (appInfo.inDevInfo == NULL) {
-        printf("\e[31merror getting in device inf\e[0m\n");
-        goto error;
-    }
-    if (hostPrefs.outDevIdx < 0)
-        hostPrefs.outDevIdx = Pa_GetDefaultOutputDevice();
-    appInfo.outDevInfo = (PaDeviceInfo*)Pa_GetDeviceInfo(hostPrefs.outDevIdx);
-    if (appInfo.outDevInfo == NULL) {
-        printf("\e[31merror getting out device info\e[0m\n");
-        goto error;
-    }
-    if (devPrefs.inChanneln < 0)
-        devPrefs.inChanneln = appInfo.inDevInfo->maxInputChannels;
-    if (devPrefs.outChanneln < 0)
-        devPrefs.outChanneln = appInfo.outDevInfo->maxOutputChannels;
-    if (devPrefs.sampleFormat < 0)
-        devPrefs.sampleFormat = paFloat32;
-        //devPrefs.sampleFormat = paInt32;
-    if (devPrefs.framesPerBuffer < 0)
-        devPrefs.framesPerBuffer = 512;
-    if (devPrefs.sampleRate < 0)
-        devPrefs.sampleRate = (appInfo.inDevInfo->defaultSampleRate > appInfo.outDevInfo->defaultSampleRate)
-            ? appInfo.outDevInfo->defaultSampleRate
-            : appInfo.inDevInfo->defaultSampleRate;     // whichever is smaller but they should be the same
- 
-    printHostPrefs(&hostPrefs);
-    printDevPrefs(&devPrefs);
-    
-    // Create Input/Output stream parameters from CLI stuff
+
+    printf(INFO);
+    printBaPrefs(&prefs);
+    printf(INFO);
+    printHostApiInfo(prefs.hostApi);
+    printf(INFO);
+    printDeviceInfo(prefs.inDev);
+    printf(INFO);
+    printDeviceInfo(prefs.outDev);
+
+    // Create Input/Output stream parameters
     PaStreamParameters iStreamParams, oStreamParams;
 
-    iStreamParams.device = hostPrefs.inDevIdx;
-    iStreamParams.channelCount = devPrefs.inChanneln;
-    iStreamParams.suggestedLatency = appInfo.inDevInfo->defaultLowInputLatency;
-    iStreamParams.sampleFormat = devPrefs.sampleFormat;
+    iStreamParams.device = prefs.inDevIdx;
+    iStreamParams.channelCount = prefs.inChanneln;
+    iStreamParams.suggestedLatency = prefs.inDev->defaultLowInputLatency;
+    iStreamParams.sampleFormat = prefs.sampleFormat;
     iStreamParams.hostApiSpecificStreamInfo = NULL;
 
-    oStreamParams.device = hostPrefs.outDevIdx;
-    oStreamParams.channelCount = devPrefs.outChanneln;
-    oStreamParams.suggestedLatency = appInfo.outDevInfo->defaultLowOutputLatency;
-    oStreamParams.sampleFormat = devPrefs.sampleFormat;
+    oStreamParams.device = prefs.outDevIdx;
+    oStreamParams.channelCount = prefs.outChanneln;
+    oStreamParams.suggestedLatency = prefs.outDev->defaultLowOutputLatency;
+    oStreamParams.sampleFormat = prefs.sampleFormat;
     oStreamParams.hostApiSpecificStreamInfo = NULL;
 
     // Is format supported test 
     // Pa_IsFormatSupported
-    e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, devPrefs.sampleRate);
+    e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, prefs.sampleRate);
     if (e != paNoError) {
-        printf("Format supported error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
+
+    // [WO] whenever we are receiving input from the tcp connection
+    // if the message specifies a new value for bass or treble
+    // the biQuadFilter will beed to have its coeffecients recalculated
+    // meaning that one of these functions will need to be invoked
+    // for now, calculate biquad coeffecients here
+    biQuadFilter_lowShelf(&amp.bqf_bass, (float)amp.bass, prefs.sampleRate);
+    biQuadFilter_highShelf(&amp.bqf_treble, (float)amp.treble, prefs.sampleRate);
+
 
     e = Pa_OpenStream(  &stream,
                         &iStreamParams,
                         &oStreamParams,
-                        devPrefs.sampleRate,
-                        devPrefs.framesPerBuffer,
+                        prefs.sampleRate,
+                        prefs.framesPerBuffer,
                         0,
                         bestAmpCB,
                         &appInfo );
     if (e != paNoError) {
-        printf("Open stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
     e = Pa_StartStream(stream);
     if (e != paNoError) {
-        printf("Start stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
+        printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
 
@@ -232,6 +236,10 @@ int main(int argc, char** argv)
         printf("Close stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
     }
+
+
+    // [WO] TCP Connection loop ends here
+
    
     // terminate portaudio
     Pa_Terminate();
