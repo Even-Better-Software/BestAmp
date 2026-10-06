@@ -1,6 +1,5 @@
 .RECIPEPREFIX = >
 
-SHELL   = C:/Program Files/Git/bin/bash.exe     # use `cp`
 CC      = gcc
 CFLAGS  = -Wall -Wextra -Iinclude -Iexternal/portaudio/include
 
