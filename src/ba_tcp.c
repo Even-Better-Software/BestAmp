@@ -53,6 +53,120 @@ int bestAmpCB(
     return paContinue;
 }
 
+int read_msg(appInfo_t* app, char* buffer, int msg_len) {
+    PaError err;
+    int status = 0;
+
+    printf("Bytes received: %d\n", status);
+    
+    // [WO] basically copy all of the setup code here. 
+    // IF Request Type is 1
+    //      Parse the BA_UPDATE_PREFS_MSG -> set prefs accordingly
+    //          Set using coalesce function (so defaults can be used)
+    //      Setup the portaudio stream w/ the values from the request
+    //      Session State -> stream running [WO] ignore this
+    // IF Request Type is 2
+    //      Set amp values
+
+    messageType_t t = parseMessageType(buffer);
+    switch (t) {
+    case BAD:
+        fprintf(stdout, BA_BAD_MESSAGE_RECIEVED);
+        return BA_ERROR_FORMAT;
+    case UPDATE_PREFS:
+        fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
+        // Parse prefs from message
+        baPrefs_t pTemp;
+        initBaPrefs(&pTemp);
+        parsePrefsFromMsg(&pTemp, buffer);
+        coalesceBaPrefsToPaDefaults(&pTemp);
+
+        if (app->streamRunning)
+            Pa_StopStream(app->stream);         // [WO] errors unhandled
+        if (app->streamOpen)
+            Pa_CloseStream(app->stream);        // [WO] errors unhandled
+
+        // Create Input/Output stream parameters
+        PaStreamParameters iStreamParams, oStreamParams;
+
+        iStreamParams.device = pTemp.inDevIdx;
+        iStreamParams.channelCount = pTemp.inChanneln;
+        iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
+        iStreamParams.sampleFormat = pTemp.sampleFormat;
+        iStreamParams.hostApiSpecificStreamInfo = NULL;
+
+        oStreamParams.device = pTemp.outDevIdx;
+        oStreamParams.channelCount = pTemp.outChanneln;
+        oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
+        oStreamParams.sampleFormat = pTemp.sampleFormat;
+        oStreamParams.hostApiSpecificStreamInfo = NULL;
+
+        // Is format supported test 
+        // Pa_IsFormatSupported
+        err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
+        if (err != paNoError) {
+            printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
+            return BA_ERROR_FORMAT;
+        }
+        // Format supported, so pTemp becomes app->prefs
+        app->baPrefs = pTemp;
+        
+        // Initial biquad calculation
+        biQuadFilter_lowShelf(
+            &app->ampValues.bqf_bass,
+            (float)app->ampValues.bass, pTemp.sampleRate);
+        biQuadFilter_highShelf(
+            &app->ampValues.bqf_treble,
+            (float)app->ampValues.treble, pTemp.sampleRate);
+
+        err = Pa_OpenStream(  &app->stream,
+                            &iStreamParams,
+                            &oStreamParams,
+                            app->baPrefs.sampleRate,
+                            app->baPrefs.framesPerBuffer,
+                            0,
+                            bestAmpCB,
+                            app );
+        if (err != paNoError) {
+            printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
+            return BA_ERROR_FATAL;
+        }
+        app->streamOpen = 1;
+        err = Pa_StartStream(app->stream);
+        if (err != paNoError) {
+            printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(err));
+            return BA_ERROR_FATAL;
+        }
+        app->streamRunning = 1;
+        break;
+    case UPDATE_AMP_VALS:
+        fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
+        ampValues_t avTemp;
+        initAmpValues(&avTemp);
+        parseAmpValuesFromMsg(&avTemp, buffer);
+        printAmpValues(&avTemp);
+
+        // recalculate biquads
+        biQuadFilter_lowShelf(
+            &avTemp.bqf_bass,
+            (float)avTemp.bass, app->baPrefs.sampleRate);
+        biQuadFilter_highShelf(
+            &avTemp.bqf_treble,
+            (float)avTemp.treble, app->baPrefs.sampleRate);
+        
+        // [WO] Should probably check that the stuff here is -1
+        // so keep old value if new value = -1
+        app->ampValues = avTemp;
+
+        break;
+    case KILL:
+        status = 0;
+        return BA_KILL;
+    }
+
+    return status;
+}
+
 
 messageType_t parseMessageType(char* msg) 
 {
@@ -116,10 +230,7 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
     printAmpValues(ampValues);
 }
 
-
 int initWinsock(appInfo_t* app) {
-    PaError e;
-
     // Initialize Winsock
     WSADATA wsaData;
     int status = WSAStartup(MAKEWORD(2,2), &wsaData); // need to manually ensure version 2.2 for some reason
@@ -196,128 +307,36 @@ int initWinsock(appInfo_t* app) {
     do {
         status = recv(client_sock, buffer, BA_BUFLEN, 0);
         if (status > 0) {
-            printf("Bytes received: %d\n", status);
-
-            // [WO] basically copy all of the setup code here. 
-            // IF Request Type is 1
-            //      Parse the BA_UPDATE_PREFS_MSG -> set prefs accordingly
-            //          Set using coalesce function (so defaults can be used)
-            //      Setup the portaudio stream w/ the values from the request
-            //      Session State -> stream running [WO] ignore this
-            // IF Request Type is 2
-            //      Set amp values
-            messageType_t t = parseMessageType(buffer);
-            switch (t) {
-            case BAD:
-                fprintf(stdout, BA_BAD_MESSAGE_RECIEVED);
+            status = read_msg(app, buffer, status);
+            if (status == BA_ERROR_FORMAT) {
+                printf(BA_BAD_MESSAGE_RECIEVED);
                 continue;
-            case UPDATE_PREFS:
-                fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
-                // Parse prefs from message
-                baPrefs_t pTemp;
-                initBaPrefs(&pTemp);
-                parsePrefsFromMsg(&pTemp, buffer);
-                coalesceBaPrefsToPaDefaults(&pTemp);
-
-                if (app->streamRunning)
-                    Pa_StopStream(app->stream);         // [WO] errors unhandled
-                if (app->streamOpen)
-                    Pa_CloseStream(app->stream);        // [WO] errors unhandled
-
-                // Create Input/Output stream parameters
-                PaStreamParameters iStreamParams, oStreamParams;
-
-                iStreamParams.device = pTemp.inDevIdx;
-                iStreamParams.channelCount = pTemp.inChanneln;
-                iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
-                iStreamParams.sampleFormat = pTemp.sampleFormat;
-                iStreamParams.hostApiSpecificStreamInfo = NULL;
-
-                oStreamParams.device = pTemp.outDevIdx;
-                oStreamParams.channelCount = pTemp.outChanneln;
-                oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
-                oStreamParams.sampleFormat = pTemp.sampleFormat;
-                oStreamParams.hostApiSpecificStreamInfo = NULL;
-
-                // Is format supported test 
-                // Pa_IsFormatSupported
-                e = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
-                if (e != paNoError) {
-                    printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(e));
-                    continue;
-                }
-                // Format supported, so pTemp becomes app->prefs
-                app->baPrefs = pTemp;
-                
-                // Initial biquad calculation
-                biQuadFilter_lowShelf(
-                    &app->ampValues.bqf_bass,
-                    (float)app->ampValues.bass, pTemp.sampleRate);
-                biQuadFilter_highShelf(
-                    &app->ampValues.bqf_treble,
-                    (float)app->ampValues.treble, pTemp.sampleRate);
-
-                e = Pa_OpenStream(  &app->stream,
-                                    &iStreamParams,
-                                    &oStreamParams,
-                                    app->baPrefs.sampleRate,
-                                    app->baPrefs.framesPerBuffer,
-                                    0,
-                                    bestAmpCB,
-                                    app );
-                if (e != paNoError) {
-                    printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(e));
-                    continue;
-                }
-                app->streamOpen = 1;
-                e = Pa_StartStream(app->stream);
-                if (e != paNoError) {
-                    printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(e));
-                    continue;
-                }
-                app->streamRunning = 1;
+            } else if (status == BA_ERROR_FATAL) {
+                printf(BA_PORTAUDIO_ERROR);
                 break;
-            case UPDATE_AMP_VALS:
-                fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
-                ampValues_t avTemp;
-                initAmpValues(&avTemp);
-                parseAmpValuesFromMsg(&avTemp, buffer);
-                printAmpValues(&avTemp);
-
-                // recalculate biquads
-                biQuadFilter_lowShelf(
-                    &avTemp.bqf_bass,
-                    (float)avTemp.bass, app->baPrefs.sampleRate);
-                biQuadFilter_highShelf(
-                    &avTemp.bqf_treble,
-                    (float)avTemp.treble, app->baPrefs.sampleRate);
-                
-                // [WO] Should probably check that the stuff here is -1
-                // so keep old value if new value = -1
-                app->ampValues = avTemp;
-
-                break;
-            case KILL:
-                status = 0;
+            } else if (status == BA_KILL) {
+                printf("Connection closing...\n");
                 break;
             }
-            // placeholder action after receiving data (echoing it back)
-            status = send(client_sock, "OK\n", 3, 0);
-            if (status == SOCKET_ERROR) {
-                printf("send failed: %d\n", WSAGetLastError());
-                closesocket(client_sock);
-                WSACleanup();
-                return 1;
-            }
-            printf("Bytes sent: %d\n", status);
-        } else if (status == 0)
+        } else if (status == 0) {
             printf("Connection closing...\n");
-        else {
+            break;
+        } else {
             printf("recv failed: %d\n", WSAGetLastError());
             closesocket(client_sock);
             WSACleanup();
             return 1;
         }
+
+        // placeholder action after receiving data (echoing it back)
+        status = send(client_sock, "OK\n", 3, 0);
+        if (status == SOCKET_ERROR) {
+            printf("send failed: %d\n", WSAGetLastError());
+            closesocket(client_sock);
+            WSACleanup();
+            return 1;
+        }
+        printf("Bytes sent: %d\n", status);
 
     } while (status > 0);
 
@@ -336,4 +355,3 @@ int initWinsock(appInfo_t* app) {
 
     return 0;
 }
-

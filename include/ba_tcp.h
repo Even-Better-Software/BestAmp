@@ -12,11 +12,11 @@
 #define BA_PORT_I (7081)
 #define BA_BUFLEN (512)
 
-#define BA_WSA_ERROR "\e[31mWSAStartup failed.\e[0m\n"
-#define BA_SOCKET_CREATE_ERROR "\e[31msocket create error.\e[0m\n"
-#define BA_SOCKET_BIND_ERROR "\e[31msocket failed to bind.\e[0m\n"
-#define BA_ACCEPT_FAILED_ERROR "\e[31mfailed to accept client.\e[0m\n"
-#define BA_SOCKET_ERROR "\e[31msocket error or unexpected disconnect.\e[0m\n"
+#define BA_WSA_ERROR BA_ERROR "WSAStartup failed.\e[0m\n"
+#define BA_SOCKET_CREATE_ERROR BA_ERROR "socket create error.\e[0m\n"
+#define BA_SOCKET_BIND_ERROR BA_ERROR "socket failed to bind.\e[0m\n"
+#define BA_ACCEPT_FAILED_ERROR BA_ERROR "failed to accept client.\e[0m\n"
+#define BA_SOCKET_ERROR BA_ERROR "socket error or unexpected disconnect.\e[0m\n"
 #define BA_AWAITING_CLIENT BA_INFO " waiting for client to connect.\n"
 #define BA_REQUEST_RECIEVED BA_INFO " request received.\n"
 #define BA_REQUEST_RECEVIED_BYTES BA_INFO " request received %d.\n"
@@ -25,8 +25,13 @@
 #define BA_BAD_MESSAGE_RECIEVED BA_INFO " bad message received.\n"
 #define BA_UPDATE_PREFS_MSG_RECEIVED BA_INFO " update prefs msg.\n"
 #define BA_UPDATE_AMP_VALS_MSG_RECEIVED BA_INFO " update amp values msg.\n"
+#define BA_PORTAUDIO_ERROR BA_ERROR " fatal portaudio error\n"
 
 #define BA_MESSAGE_TYPE "%d"
+
+#define BA_ERROR_FORMAT -1
+#define BA_ERROR_FATAL -2
+#define BA_KILL -3
 
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
