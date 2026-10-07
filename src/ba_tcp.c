@@ -189,7 +189,7 @@ void printMessage(message_t* msg)
 }
 
 
-int read_msg(appInfo_t* app, char* buffer, int msg_len)
+int read_msg(appInfo_t* app, message_t* msg)
 {
     PaError err;
     int status = 0;

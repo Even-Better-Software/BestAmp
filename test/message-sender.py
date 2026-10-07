@@ -9,6 +9,7 @@ import socket
 # Configure your server details here
 HOST = "127.0.0.1"
 PORT = 7080
+BUFLEN = 512
 
 
 def main():
@@ -56,9 +57,9 @@ def main():
         )
 
         # Optional: Uncomment below if your C server sends a response back
-        # response = s.recv(1024)
-        # if response:
-        #     print(f"    Server response: {response.hex()}")
+        response = s.recv(512)
+        if response:
+            print(f"    Server response: {response.hex()}")
 
       except Exception as e:
         print(f"[-] Error reading or transmitting file: {e}")
