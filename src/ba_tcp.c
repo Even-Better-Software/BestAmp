@@ -128,6 +128,7 @@ int read_msg(appInfo_t* app, char* buffer, int msg_len)
     // IF Request Type is 2
     //      Set amp values
 
+    /*
     messageType_t t = parseMessageType(buffer);
     switch (t) {
     case BAD:
@@ -235,6 +236,7 @@ int read_msg(appInfo_t* app, char* buffer, int msg_len)
         status = 0;
         return BA_KILL;
     } 
+    */
 
     return status;
 }
