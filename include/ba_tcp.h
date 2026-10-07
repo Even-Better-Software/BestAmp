@@ -74,6 +74,9 @@ examples (w/ ncat directly transmitting the message):
 */
 
 
+extern char* BA_NO_CONTENT;
+
+
 typedef enum BA_MESSAGE_TYPES {
     BAD = -1,
     KILL = 0,               // stop the application
@@ -83,8 +86,6 @@ typedef enum BA_MESSAGE_TYPES {
     QUERY_DEFAULT_HOST_API,
     QUERY_DEVICES_FOR_HOST_API
 } messageType_t;
-
-char* BA_NO_DATA = NULL;
 
 typedef struct BA_MSG {
     messageType_t type;

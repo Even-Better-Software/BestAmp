@@ -11,6 +11,9 @@
 #include "ba_common.h"
 
 
+char* BA_NO_CONTENT = NULL;
+
+
 // BestAmp PortAudio callback implementation.
 int bestAmpCB(
     const void* input,
@@ -65,15 +68,19 @@ int parseMessage(message_t* pMsg, char* msg)
     //      assign to the `data` field of the `message_t` struct
 
     // as per our protocol this never changes literally interpret this as an int
-    int typeByte = (int)(*(msg + 0));
+    int typeByte = 0;
+    memcpy(&typeByte, msg, sizeof(typeByte));
+    typeByte = ntohl(typeByte);
     // as per out protocol this never changes literally interpret this as an int
-    int lengthByte = (int)(*(msg + 1)); // this keeps the thing advanced?
+    int lengthByte = 0; // this keeps the thing advanced?
+    memcpy(&lengthByte, (msg + sizeof(typeByte)), sizeof(lengthByte));
+    lengthByte = ntohl(lengthByte);
 
     switch (typeByte) {
     case KILL:
         pMsg->type = KILL;
         pMsg->length = 0;
-        pMsg->data = BA_NO_DATA;            // can skip the other stuff
+        pMsg->data = BA_NO_CONTENT; // can skip the other stuff
         return 0;
     case UPDATE_PREFS:
         pMsg->type = UPDATE_PREFS; 
@@ -96,10 +103,12 @@ int parseMessage(message_t* pMsg, char* msg)
      
     if (lengthByte == 0) {
         pMsg->length = 0;
-        pMsg->data = BA_NO_DATA;                   // set this explicitly (this is just NULL)
+        pMsg->data = BA_NO_CONTENT; // set this explicitly (this is just NULL)
     } else if (lengthByte > 0) {
-        pMsg->length = lengthByte;                 // this many bytes should be in the message
-        pMsg->data = msg + 2;                      // do I need to advance twice or just once cause I already advanced?
+        // this many bytes should be in the message
+        pMsg->length = lengthByte;
+        // do I need to advance twice or just once cause I already advanced?
+        pMsg->data = msg + sizeof(typeByte) + sizeof(lengthByte);
     }
 
     return 0;
@@ -108,6 +117,8 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
 {
+    (void)msg;
+
     // tokenize then parse
     /*
     char* next_token = NULL;
@@ -139,6 +150,8 @@ void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
 
 void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
 {
+    (void)msg;
+    
     // tokenize then parse
     /*
     char* next_token = NULL;
@@ -180,6 +193,11 @@ int read_msg(appInfo_t* app, char* buffer, int msg_len)
 {
     PaError err;
     int status = 0;
+    
+    (void)err;
+    (void)app;
+    (void)buffer;
+    (void)msg_len;
 
     printf("Bytes received: %d\n", status);
     
@@ -362,6 +380,13 @@ int initWinsock(appInfo_t* app) {
         return 1;
     }
     printf("Listening on port %s...\n", BA_PORT);
+    
+    // accept loop so the client disconnecting does not trigger this
+    // application shutting down
+    // but then we have the problem of turning this off if the app is shutdown
+    // in a way that we cannot control
+    // for testing this is tricky because ncat terminates the connection
+    // immediately after sending the message
 
     // accept a client
     SOCKET client_sock;
@@ -383,13 +408,16 @@ int initWinsock(appInfo_t* app) {
     // so I know that the memory is zeroed
     char* buffer = (char*)calloc(BA_BUFLEN, sizeof(char));
     do {
+        memset(buffer, 0, BA_BUFLEN);       // zero memory per iteration
         status = recv(client_sock, buffer, BA_BUFLEN, 0);
         if (status > 0) {
+            printf("Bytes recevied: %d\n", status);
+
             // status = read_msg(app, buffer, status);
 
             // parse message
             message_t msg = { 0 };
-            parseMessage(&msg, buffer);
+            status = parseMessage(&msg, buffer);
             printMessage(&msg);
             // if the message is kill, abort the loop (dont need to process anything else)
             // if the message is bad (-1), next iteration of the loop (drop it)
@@ -401,7 +429,6 @@ int initWinsock(appInfo_t* app) {
             //      if handler success, OK reply or handler OK reply message & data
             //      if handler fails, BAD reply or handler BAD reply
 
-            /**
             if (status == BA_ERROR_FORMAT) {
                 printf(BA_BAD_MESSAGE_RECIEVED);
                 continue;
@@ -412,8 +439,6 @@ int initWinsock(appInfo_t* app) {
                 printf("Connection closing...\n");
                 break;
             }
-            */
-            continue;
 
         } else if (status == 0) {
             printf("Connection closing...\n");
