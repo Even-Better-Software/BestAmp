@@ -159,10 +159,19 @@ int read_msg(appInfo_t* app, char* buffer, int msg_len) {
         app->ampValues = avTemp;
 
         break;
+    case QUERY_HOST_APIS:
+        fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
+        break;
+    case QUERY_DEFAULT_HOST_API:
+        fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
+        break;
+    case QUERY_DEVICES_FOR_HOST_API:
+        fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
+        break;
     case KILL:
         status = 0;
         return BA_KILL;
-    }
+    
 
     return status;
 }
