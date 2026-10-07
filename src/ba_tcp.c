@@ -338,7 +338,7 @@ int initWinsock(appInfo_t* app) {
         }
         printf("Bytes sent: %d\n", status);
 
-    } while (status > 0);
+    } while (1);
 
     // Portaudio specific stream shutdown
     if (app->streamRunning)
