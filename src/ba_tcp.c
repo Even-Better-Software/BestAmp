@@ -106,6 +106,70 @@ int parseMessage(message_t* pMsg, char* msg)
 }
 
 
+void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
+{
+    // tokenize then parse
+    /*
+    char* next_token = NULL;
+    char* token = strtok_s(msg, ",", &next_token);
+    if (!token) return;
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->hostApiIdx = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->inDevIdx = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->outDevIdx = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->inChanneln = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->outChanneln = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->framesPerBuffer = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) prefs->sampleRate = (float)atof(token);
+    */
+    
+    // now the messages should be raw of bytes
+    
+ 
+    fprintf(stdout, BA_INFO " parsed updated prefs "); 
+    printBaPrefs(prefs);
+}
+
+
+void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
+{
+    // tokenize then parse
+    /*
+    char* next_token = NULL;
+    char* token = strtok_s(msg, ",", &next_token);
+    if (!token) return;
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) ampValues->gain = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) ampValues->bass = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) ampValues->treble = atoi(token);
+    token = strtok_s(NULL, ",", &next_token);
+    if (token && strlen(token) > 0) ampValues->power = atoi(token);
+    */
+       
+    // first byte is the message code, but that should already be pased at
+    // this stage
+    // read next byte, should translate as an integer which is the number
+    // of bytes in the message
+ 
+    // now the messages should be raw bytes
+    char c = '\0';
+    while (c != '\n') {
+        break; 
+    }
+    
+    fprintf(stdout, BA_INFO " parsed updated amp values "); 
+    printAmpValues(ampValues);
+}
+
+
 void printMessage(message_t* msg)
 {
     printf("type: %d, length: %d\n", msg->type, msg->length);
@@ -241,68 +305,6 @@ int read_msg(appInfo_t* app, char* buffer, int msg_len)
     return status;
 }
 
-
-void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
-{
-    // tokenize then parse
-    /*
-    char* next_token = NULL;
-    char* token = strtok_s(msg, ",", &next_token);
-    if (!token) return;
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->hostApiIdx = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->inDevIdx = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->outDevIdx = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->inChanneln = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->outChanneln = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->framesPerBuffer = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->sampleRate = (float)atof(token);
-    */
-    
-    // now the messages should be raw of bytes
-    
- 
-    fprintf(stdout, BA_INFO " parsed updated prefs "); 
-    printBaPrefs(prefs);
-}
-
-void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
-{
-    // tokenize then parse
-    /*
-    char* next_token = NULL;
-    char* token = strtok_s(msg, ",", &next_token);
-    if (!token) return;
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->gain = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->bass = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->treble = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->power = atoi(token);
-    */
-       
-    // first byte is the message code, but that should already be pased at
-    // this stage
-    // read next byte, should translate as an integer which is the number
-    // of bytes in the message
- 
-    // now the messages should be raw bytes
-    char c = '\0';
-    while (c != '\n') {
-        break; 
-    }
-    
-    fprintf(stdout, BA_INFO " parsed updated amp values "); 
-    printAmpValues(ampValues);
-}
 
 int initWinsock(appInfo_t* app) {
     // Initialize Winsock
