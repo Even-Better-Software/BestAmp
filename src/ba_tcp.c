@@ -115,7 +115,7 @@ int parseMessage(message_t* pMsg, char* msg)
 }
 
 
-void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
+void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
 {
     (void)msg;
 
@@ -139,16 +139,33 @@ void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
     token = strtok_s(NULL, ",", &next_token);
     if (token && strlen(token) > 0) prefs->sampleRate = (float)atof(token);
     */
-    
-    // now the messages should be raw of bytes
-    
- 
+
+    memcpy(&prefs->hostApiIdx, msg->data, sizeof(prefs->hostApiIdx));
+    prefs->hostApiIdx = ntohl(prefs->hostApiIdx);
+
+    memcpy(&prefs->inDevIdx, msg->data += sizeof(prefs->hostApiIdx), sizeof(prefs->inDevIdx));
+    prefs->inDevIdx = ntohl(prefs->inDevIdx);   // advancing the pointer w/ no checks against the message length
+    memcpy(&prefs->outDevIdx, msg->data += sizeof(prefs->inDevIdx), sizeof(prefs->outDevIdx));
+    prefs->outDevIdx = ntohl(prefs->outDevIdx); // advancing the pointer w/ no checks against the message length
+
+    memcpy(&prefs->inChanneln, msg->data += sizeof(prefs->outDevIdx), sizeof(prefs->inChanneln));
+    prefs->inChanneln = ntohl(prefs->inChanneln);
+    memcpy(&prefs->outChanneln, msg->data += sizeof(prefs->inChanneln), sizeof(prefs->outChanneln));
+    prefs->outChanneln = ntohl(prefs->outChanneln);
+
+    memcpy(&prefs->framesPerBuffer, msg->data += sizeof(prefs->outChanneln), sizeof(prefs->framesPerBuffer));
+    prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
+   
+    int tmp; 
+    memcpy(&tmp, msg->data += sizeof(prefs->framesPerBuffer), sizeof(tmp));
+    tmp = ntohl(tmp);   // cheat to get the correct byte-ordering
+    memcpy(&prefs->sampleRate, &tmp, sizeof(prefs->sampleRate));
+     
     fprintf(stdout, BA_INFO " parsed updated prefs "); 
-    printBaPrefs(prefs);
 }
 
 
-void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
+void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
 {
     (void)msg;
     
@@ -172,14 +189,7 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
     // read next byte, should translate as an integer which is the number
     // of bytes in the message
  
-    // now the messages should be raw bytes
-    char c = '\0';
-    while (c != '\n') {
-        break; 
-    }
-    
     fprintf(stdout, BA_INFO " parsed updated amp values "); 
-    printAmpValues(ampValues);
 }
 
 
@@ -189,15 +199,10 @@ void printMessage(message_t* msg)
 }
 
 
-int read_msg(appInfo_t* app, message_t* msg)
+int processMessage(appInfo_t* app, message_t* msg)
 {
     PaError err;
     int status = 0;
-    
-    (void)err;
-    (void)app;
-    (void)buffer;
-    (void)msg_len;
 
     printf("Bytes received: %d\n", status);
     
@@ -210,9 +215,7 @@ int read_msg(appInfo_t* app, message_t* msg)
     // IF Request Type is 2
     //      Set amp values
 
-    /*
-    messageType_t t = parseMessageType(buffer);
-    switch (t) {
+    switch (msg->type) {
     case BAD:
         fprintf(stdout, BA_BAD_MESSAGE_RECIEVED);
         return BA_ERROR_FORMAT;
@@ -221,8 +224,10 @@ int read_msg(appInfo_t* app, message_t* msg)
         // Parse prefs from message
         baPrefs_t pTemp;
         initBaPrefs(&pTemp);
-        parsePrefsFromMsg(&pTemp, buffer);
+        parsePrefsFromMsg(&pTemp, msg);
+        printBaPrefs(&pTemp);
         coalesceBaPrefsToPaDefaults(&pTemp);
+        printBaPrefs(&pTemp);
 
         if (app->streamRunning)
             Pa_StopStream(app->stream);         // [WO] errors unhandled
@@ -286,7 +291,7 @@ int read_msg(appInfo_t* app, message_t* msg)
         fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
         ampValues_t avTemp;
         initAmpValues(&avTemp);
-        parseAmpValuesFromMsg(&avTemp, buffer);
+        parseAmpValuesFromMsg(&avTemp, msg);
         printAmpValues(&avTemp);
 
         // recalculate biquads
@@ -318,7 +323,6 @@ int read_msg(appInfo_t* app, message_t* msg)
         status = 0;
         return BA_KILL;
     } 
-    */
 
     return status;
 }
@@ -428,6 +432,7 @@ int initWinsock(appInfo_t* app) {
             // if the message is valid, delegate to message type handler
             //      if handler success, OK reply or handler OK reply message & data
             //      if handler fails, BAD reply or handler BAD reply
+            status = processMessage(app, &msg);
 
             if (status == BA_ERROR_FORMAT) {
                 printf(BA_BAD_MESSAGE_RECIEVED);
@@ -477,3 +482,4 @@ int initWinsock(appInfo_t* app) {
 
     return 0;
 }
+

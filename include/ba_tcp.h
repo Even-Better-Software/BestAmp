@@ -120,8 +120,10 @@ For debugging purposes.
 */
 void printMessage(message_t* amsg);
 
-void parsePrefsFromMsg(baPrefs_t* prefs, char* msg);
-void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg);
+void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg);
+void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg);
+
+int processMessage(appInfo_t* app, message_t* msg);
 
 /**
 Windows Socket TCP Loop.
