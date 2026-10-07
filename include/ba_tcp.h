@@ -62,7 +62,10 @@ typedef enum BA_MESSAGE_TYPES {
     BAD = -1,
     KILL = 0,               // stop the application
     UPDATE_PREFS = 1,
-    UPDATE_AMP_VALS
+    UPDATE_AMP_VALS,
+    QUERY_HOST_APIS,
+    QUERY_DEFAULT_HOST_API,
+    QUERY_DEVICES_FOR_HOST_API
 } messageType_t;
 
 typedef struct BA_UPDATE_PREFS_MSG {

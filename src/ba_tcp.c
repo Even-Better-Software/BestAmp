@@ -181,6 +181,12 @@ messageType_t parseMessageType(char* msg)
         return UPDATE_PREFS; 
     case UPDATE_AMP_VALS:
         return UPDATE_AMP_VALS;
+    case QUERY_HOST_APIS:
+        return QUERY_HOST_APIS;
+    case QUERY_DEFAULT_HOST_API:
+        return QUERY_DEFAULT_HOST_API;
+    case QUERY_DEVICES_FOR_HOST_API:
+        return QUERY_DEVICES_FOR_HOST_API;
     default:
         return BAD;
     }
