@@ -11,6 +11,7 @@
 #define BA_PORT "7080"
 #define BA_PORT_I (7081)
 #define BA_BUFLEN (512)
+#define BA_MSG_DELIM "\n"
 
 #define BA_WSA_ERROR BA_ERROR "WSAStartup failed.\n"
 #define BA_SOCKET_CREATE_ERROR BA_ERROR "socket create error.\n"
@@ -83,6 +84,17 @@ typedef enum BA_MESSAGE_TYPES {
     QUERY_DEVICES_FOR_HOST_API
 } messageType_t;
 
+char* BA_NO_DATA = NULL;
+
+typedef struct BA_MSG {
+    messageType_t type;
+    int length;         // uint32_t (fixed width)
+    char* data;         // this is dangerous though because it wont live on the heap
+                        // only for the duration of the socket function call
+                        // however, that should be the duration of the entire program
+                        // so this is probably ok... something to think about
+} message_t;
+
 typedef struct BA_UPDATE_PREFS_MSG {
     int hostIdx, inDevIdx, outDevIdx, inChanneln, outChanneln;
 } updatePrefsMsg_t;     // not actually used (but it might be)
@@ -91,7 +103,21 @@ typedef struct BA_UPDATE_AMP_VALS_MSG {
     int gain, bass, treble, power;
 } updateAmpValsMsg_t;   // not actually used (but it might be)
 
-messageType_t parseMessageType(char* msg);
+// dont need this anymore
+// messageType_t parseMessageType(char* msg);
+
+/**
+Accepts a message byte array (char) & parses into the header struct.
+    [WO] should return some sort of parse code
+    0 -> OK
+    -1 -> parse failed (probably invalid type)
+*/
+int parseMessage(message_t* pMsg, char* msg);
+
+/**
+For debugging purposes.
+*/
+void printMessage(message_t* amsg);
 
 void parsePrefsFromMsg(baPrefs_t* prefs, char* msg);
 void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg);

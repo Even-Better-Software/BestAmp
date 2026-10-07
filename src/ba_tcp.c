@@ -53,7 +53,67 @@ int bestAmpCB(
     return paContinue;
 }
 
-int read_msg(appInfo_t* app, char* buffer, int msg_len) {
+
+int parseMessage(message_t* pMsg, char* msg)
+{
+    // Byte 0 -> message type
+    //      store in `type`
+    // Byte 1 -> length of the message
+    //      store in `length`
+    // Byte 2 -> from this point onwards, its message specific content
+    //      advance the pointer by the `length` & then
+    //      assign to the `data` field of the `message_t` struct
+
+    // as per our protocol this never changes literally interpret this as an int
+    int typeByte = (int)(*(msg + 0));
+    // as per out protocol this never changes literally interpret this as an int
+    int lengthByte = (int)(*(msg + 1)); // this keeps the thing advanced?
+
+    switch (typeByte) {
+    case KILL:
+        pMsg->type = KILL;
+        pMsg->length = 0;
+        pMsg->data = BA_NO_DATA;            // can skip the other stuff
+        return 0;
+    case UPDATE_PREFS:
+        pMsg->type = UPDATE_PREFS; 
+        break;
+    case UPDATE_AMP_VALS:
+        pMsg->type = UPDATE_AMP_VALS;
+        break;
+    case QUERY_HOST_APIS:
+        pMsg->type = QUERY_HOST_APIS;
+        break;
+    case QUERY_DEFAULT_HOST_API:
+        pMsg->type = QUERY_DEFAULT_HOST_API;
+        break;
+    case QUERY_DEVICES_FOR_HOST_API:
+        pMsg->type = QUERY_DEVICES_FOR_HOST_API;
+        break;
+    default:
+        return -1;
+    }
+     
+    if (lengthByte == 0) {
+        pMsg->length = 0;
+        pMsg->data = BA_NO_DATA;                   // set this explicitly (this is just NULL)
+    } else if (lengthByte > 0) {
+        pMsg->length = lengthByte;                 // this many bytes should be in the message
+        pMsg->data = msg + 2;                      // do I need to advance twice or just once cause I already advanced?
+    }
+
+    return 0;
+}
+
+
+void printMessage(message_t* msg)
+{
+    printf("type: %d, length: %d\n", msg->type, msg->length);
+}
+
+
+int read_msg(appInfo_t* app, char* buffer, int msg_len)
+{
     PaError err;
     int status = 0;
 
@@ -174,39 +234,16 @@ int read_msg(appInfo_t* app, char* buffer, int msg_len) {
     case KILL:
         status = 0;
         return BA_KILL;
-    
+    } 
 
     return status;
 }
 
 
-messageType_t parseMessageType(char* msg) 
-{
-    int d = -1;
-    int r = sscanf_s(msg, BA_MESSAGE_TYPE, &d);
-    if (r == 0 || r == EOF)
-        return BAD;
-    switch (d) {
-    case KILL:
-        return KILL;
-    case UPDATE_PREFS:
-        return UPDATE_PREFS; 
-    case UPDATE_AMP_VALS:
-        return UPDATE_AMP_VALS;
-    case QUERY_HOST_APIS:
-        return QUERY_HOST_APIS;
-    case QUERY_DEFAULT_HOST_API:
-        return QUERY_DEFAULT_HOST_API;
-    case QUERY_DEVICES_FOR_HOST_API:
-        return QUERY_DEVICES_FOR_HOST_API;
-    default:
-        return BAD;
-    }
-}
-
 void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
 {
     // tokenize then parse
+    /*
     char* next_token = NULL;
     char* token = strtok_s(msg, ",", &next_token);
     if (!token) return;
@@ -224,7 +261,11 @@ void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
     if (token && strlen(token) > 0) prefs->framesPerBuffer = atoi(token);
     token = strtok_s(NULL, ",", &next_token);
     if (token && strlen(token) > 0) prefs->sampleRate = (float)atof(token);
+    */
     
+    // now the messages should be raw of bytes
+    
+ 
     fprintf(stdout, BA_INFO " parsed updated prefs "); 
     printBaPrefs(prefs);
 }
@@ -232,6 +273,7 @@ void parsePrefsFromMsg(baPrefs_t* prefs, char* msg)
 void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
 {
     // tokenize then parse
+    /*
     char* next_token = NULL;
     char* token = strtok_s(msg, ",", &next_token);
     if (!token) return;
@@ -243,6 +285,18 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, char* msg)
     if (token && strlen(token) > 0) ampValues->treble = atoi(token);
     token = strtok_s(NULL, ",", &next_token);
     if (token && strlen(token) > 0) ampValues->power = atoi(token);
+    */
+       
+    // first byte is the message code, but that should already be pased at
+    // this stage
+    // read next byte, should translate as an integer which is the number
+    // of bytes in the message
+ 
+    // now the messages should be raw bytes
+    char c = '\0';
+    while (c != '\n') {
+        break; 
+    }
     
     fprintf(stdout, BA_INFO " parsed updated amp values "); 
     printAmpValues(ampValues);
@@ -320,12 +374,30 @@ int initWinsock(appInfo_t* app) {
     closesocket(sock);
 
     // Receive until the peer shuts down the connection
-
-    char buffer[BA_BUFLEN];
+    // char buffer[BA_BUFLEN];
+    // [WO] clear & allocate this buffer
+    // so I know that the memory is zeroed
+    char* buffer = (char*)calloc(BA_BUFLEN, sizeof(char));
     do {
         status = recv(client_sock, buffer, BA_BUFLEN, 0);
         if (status > 0) {
-            status = read_msg(app, buffer, status);
+            // status = read_msg(app, buffer, status);
+
+            // parse message
+            message_t msg = { 0 };
+            parseMessage(&msg, buffer);
+            printMessage(&msg);
+            // if the message is kill, abort the loop (dont need to process anything else)
+            // if the message is bad (-1), next iteration of the loop (drop it)
+            //      invalid message reply
+
+            // if the message is complex, route to the message processor?
+            //      or route all things to the message processor?
+            // if the message is valid, delegate to message type handler
+            //      if handler success, OK reply or handler OK reply message & data
+            //      if handler fails, BAD reply or handler BAD reply
+
+            /**
             if (status == BA_ERROR_FORMAT) {
                 printf(BA_BAD_MESSAGE_RECIEVED);
                 continue;
@@ -336,6 +408,9 @@ int initWinsock(appInfo_t* app) {
                 printf("Connection closing...\n");
                 break;
             }
+            */
+            continue;
+
         } else if (status == 0) {
             printf("Connection closing...\n");
             break;
