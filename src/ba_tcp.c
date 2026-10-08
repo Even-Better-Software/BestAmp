@@ -132,27 +132,6 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
 {
-    // tokenize then parse
-    /*
-    char* next_token = NULL;
-    char* token = strtok_s(msg, ",", &next_token);
-    if (!token) return;
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->hostApiIdx = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->inDevIdx = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->outDevIdx = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->inChanneln = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->outChanneln = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->framesPerBuffer = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) prefs->sampleRate = (float)atof(token);
-    */
-
     if (msg->length != 0x1C)
         fprintf(stderr, "\e[31update prefs content length should be 28 bytes.\e[0m\n");
 
@@ -201,36 +180,29 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
 
 void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
 {
-    // tokenize then parse
-    /*
-    char* next_token = NULL;
-    char* token = strtok_s(msg, ",", &next_token);
-    if (!token) return;
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->gain = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->bass = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->treble = atoi(token);
-    token = strtok_s(NULL, ",", &next_token);
-    if (token && strlen(token) > 0) ampValues->power = atoi(token);
-    */
-
     if (msg->length != 0x10)
         fprintf(stderr, "\e[31mupdate amp values content length should be 16 bytes.\e[0m\n");
 
-    char* tmp = msg->data;
+    int t_data_off = msg->data_off;
 
-    memcpy(&ampValues->gain, tmp, sizeof(ampValues->gain));
+    memcpy(&ampValues->gain, (
+        msg->data + t_data_off
+    ), sizeof(ampValues->gain));
     ampValues->gain = ntohl(ampValues->gain);
 
-    memcpy(&ampValues->bass, tmp += sizeof(ampValues->gain), sizeof(ampValues->bass));
+    memcpy(&ampValues->bass, (
+        msg->data + (t_data_off += sizeof(ampValues->gain))
+    ), sizeof(ampValues->bass));
     ampValues->bass = ntohl(ampValues->bass);
 
-    memcpy(&ampValues->treble, tmp += sizeof(ampValues->bass), sizeof(ampValues->treble));
+    memcpy(&ampValues->treble, (
+        msg->data + (t_data_off += sizeof(ampValues->bass))
+    ), sizeof(ampValues->treble));
     ampValues->treble = ntohl(ampValues->treble);
 
-    memcpy(&ampValues->power, tmp += sizeof(ampValues->treble), sizeof(ampValues->power));
+    memcpy(&ampValues->power, (
+        msg->data + (t_data_off += sizeof(ampValues->treble))
+    ), sizeof(ampValues->power));
     ampValues->power = ntohl(ampValues->power);
  
     fprintf(stdout, BA_INFO " parsed updated amp values "); 
