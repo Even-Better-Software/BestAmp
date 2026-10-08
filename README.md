@@ -41,3 +41,7 @@ xxd -r ./my-hex.hex > ./my-bin.bin
 python ./message-sender
 ```
 
+## Additional Documentation
+
+- [BestAmp protocol specification](./docs/ba_proto_spec.md)
+
