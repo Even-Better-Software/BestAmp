@@ -57,6 +57,20 @@ int bestAmpCB(
 }
 
 
+void initTcpState(tcpState_t* tcp)
+{
+    tcp->sSocket = INVALID_SOCKET;
+    tcp->cSocket = INVALID_SOCKET;
+    tcp->result = NULL;
+
+    ZeroMemory(&tcp->hints, sizeof (tcp->hints));
+    tcp->hints.ai_family     = AF_INET;
+    tcp->hints.ai_socktype   = SOCK_STREAM;
+    tcp->hints.ai_protocol   = IPPROTO_TCP;
+    tcp->hints.ai_flags      = AI_PASSIVE;
+}
+
+
 int parseMessage(message_t* pMsg, char* msg)
 {
     // Byte 0 -> message type
@@ -72,7 +86,7 @@ int parseMessage(message_t* pMsg, char* msg)
     memcpy(&typeByte, msg, sizeof(typeByte));
     typeByte = ntohl(typeByte);
     // as per out protocol this never changes literally interpret this as an int
-    int lengthByte = 0; // this keeps the thing advanced?
+    int lengthByte = 0;
     memcpy(&lengthByte, (msg + sizeof(typeByte)), sizeof(lengthByte));
     lengthByte = ntohl(lengthByte);
 
@@ -108,7 +122,8 @@ int parseMessage(message_t* pMsg, char* msg)
         // this many bytes should be in the message
         pMsg->length = lengthByte;
         // do I need to advance twice or just once cause I already advanced?
-        pMsg->data = msg + sizeof(typeByte) + sizeof(lengthByte);
+        pMsg->data = msg;
+        pMsg->data_off = sizeof(typeByte) + sizeof(lengthByte);
     }
 
     return 0;
@@ -141,28 +156,42 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
     if (msg->length != 0x1C)
         fprintf(stderr, "\e[31update prefs content length should be 28 bytes.\e[0m\n");
 
-    char* tmp = msg->data;
+    int t_data_off = msg->data_off;
 
-    memcpy(&prefs->hostApiIdx, tmp, sizeof(prefs->hostApiIdx));
+    memcpy(&prefs->hostApiIdx, (
+        msg->data + t_data_off
+    ), sizeof(prefs->hostApiIdx));
     prefs->hostApiIdx = ntohl(prefs->hostApiIdx);
 
-    memcpy(&prefs->inDevIdx, tmp += sizeof(prefs->hostApiIdx), sizeof(prefs->inDevIdx));
+    memcpy(&prefs->inDevIdx, (
+        msg->data + (t_data_off += sizeof(prefs->hostApiIdx))
+    ), sizeof(prefs->inDevIdx));
     prefs->inDevIdx = ntohl(prefs->inDevIdx);
 
-    memcpy(&prefs->outDevIdx, tmp += sizeof(prefs->inDevIdx), sizeof(prefs->outDevIdx));
+    memcpy(&prefs->outDevIdx, (
+        msg->data + (t_data_off += sizeof(prefs->inDevIdx))
+    ), sizeof(prefs->outDevIdx));
     prefs->outDevIdx = ntohl(prefs->outDevIdx);
 
-    memcpy(&prefs->inChanneln, tmp += sizeof(prefs->outDevIdx), sizeof(prefs->inChanneln));
+    memcpy(&prefs->inChanneln, (
+        msg->data + (t_data_off += sizeof(prefs->outDevIdx))
+    ), sizeof(prefs->inChanneln));
     prefs->inChanneln = ntohl(prefs->inChanneln);
 
-    memcpy(&prefs->outChanneln, tmp += sizeof(prefs->inChanneln), sizeof(prefs->outChanneln));
+    memcpy(&prefs->outChanneln, (
+        msg->data + (t_data_off += sizeof(prefs->inChanneln))
+    ), sizeof(prefs->outChanneln));
     prefs->outChanneln = ntohl(prefs->outChanneln);
 
-    memcpy(&prefs->framesPerBuffer, tmp += sizeof(prefs->outChanneln), sizeof(prefs->framesPerBuffer));
+    memcpy(&prefs->framesPerBuffer, (
+        msg->data + (t_data_off += sizeof(prefs->outChanneln))
+    ), sizeof(prefs->framesPerBuffer));
     prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
-   
+  
     int tmpi;
-    memcpy(&tmpi, tmp += sizeof(prefs->framesPerBuffer), sizeof(tmpi));
+    memcpy(&tmpi, msg->data + (
+        t_data_off += sizeof(prefs->framesPerBuffer)
+    ), sizeof(tmpi));
     tmpi = ntohl(tmpi);   // cheat to get the correct byte-ordering
     memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
      
@@ -342,99 +371,73 @@ int processMessage(appInfo_t* app, message_t* msg)
 
 
 int initWinsock(appInfo_t* app) {
+    tcpState_t tcp = { 0 };
+    initTcpState(&tcp);
+
     // Initialize Winsock
-    WSADATA wsaData;
-    int status = WSAStartup(MAKEWORD(2,2), &wsaData); // need to manually ensure version 2.2 for some reason
+    int status = WSAStartup(MAKEWORD(2,2), &tcp.wsaData); // need to manually ensure version 2.2 for some reason
     if (status != 0) {
         printf("WSAStartup failed: %d\n", status);
         return 1;
     }
 
-    struct addrinfo *result = NULL; 
-    struct addrinfo hints;
-
-    ZeroMemory(&hints, sizeof (hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE;
-
     // Resolve the local address and port to be used by the server
-    status = getaddrinfo(NULL, BA_PORT, &hints, &result);
+    status = getaddrinfo(NULL, BA_PORT, &tcp.hints, &tcp.result);
     if (status != 0) {
         printf("getaddrinfo failed: %d\n", status);
-        WSACleanup();
+        freeaddrinfo(tcp.result);
         return 1;
     }
-
-    SOCKET sock = INVALID_SOCKET;
-    sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-    if (sock == INVALID_SOCKET) {
+    // Create the server socket
+    tcp.sSocket = socket(tcp.result->ai_family, tcp.result->ai_socktype, tcp.result->ai_protocol);
+    if (tcp.sSocket == INVALID_SOCKET) {
         printf("Error at socket(): %d\n", WSAGetLastError());
-        freeaddrinfo(result);
-        WSACleanup();
+        freeaddrinfo(tcp.result);
+        closesocket(tcp.sSocket);
         return 1;
     }
-
     // Setup the TCP listening socket
-    status = bind(sock, result->ai_addr, (int)result->ai_addrlen);
+    status = bind(tcp.sSocket,
+        tcp.result->ai_addr, (int)tcp.result->ai_addrlen);
     if (status == SOCKET_ERROR) {
         printf("bind failed with error: %d\n", WSAGetLastError());
-        freeaddrinfo(result);
-        closesocket(sock);
-        WSACleanup();
+        freeaddrinfo(tcp.result);
+        closesocket(tcp.sSocket);
         return 1;
     }
-
     // addrinfo needs to be cleaned up
-    freeaddrinfo(result);
-
+    freeaddrinfo(tcp.result);
     // start listening
-    if (listen(sock, 1) == SOCKET_ERROR) { // allow only 1 connection in the backlog
+    if (listen(tcp.sSocket, 1) == SOCKET_ERROR) { // allow only 1 connection in the backlog
         printf("Listen failed with error: %d\n", WSAGetLastError() );
-        closesocket(sock);
-        WSACleanup();
+        closesocket(tcp.sSocket);
         return 1;
     }
     printf("Listening on port %s...\n", BA_PORT);
-    
-    // accept loop so the client disconnecting does not trigger this
-    // application shutting down
-    // but then we have the problem of turning this off if the app is shutdown
-    // in a way that we cannot control
-    // for testing this is tricky because ncat terminates the connection
-    // immediately after sending the message
-
     // accept a client
-    SOCKET client_sock;
-    client_sock = accept(sock, NULL, NULL);
-    if (client_sock == INVALID_SOCKET) {
+    tcp.cSocket = accept(tcp.sSocket, NULL, NULL);
+    if (tcp.cSocket == INVALID_SOCKET) {
         printf("accept failed: %d\n", WSAGetLastError());
-        closesocket(sock);
-        WSACleanup();
+        closesocket(tcp.sSocket);
         return 1;
     }
     printf("Client connected.\n");
-
     // no need to keep the original socket anymore, we just want the one client socket
-    closesocket(sock);
+    closesocket(tcp.sSocket);
 
     // Receive until the peer shuts down the connection
-    // char buffer[BA_BUFLEN];
     // [WO] clear & allocate this buffer
     // so I know that the memory is zeroed
-    char* buffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+    tcp.buffer = NULL;
+    tcp.buffer = (char*)calloc(BA_BUFLEN, sizeof(char));
     do {
-        memset(buffer, 0, BA_BUFLEN);       // zero memory per iteration
-        status = recv(client_sock, buffer, BA_BUFLEN, 0);
+        memset(tcp.buffer, 0, BA_BUFLEN);       // zero memory per iteration
+        status = recv(tcp.cSocket, tcp.buffer, BA_BUFLEN, 0);
         if (status > 0) {
-            printf("Bytes recevied: %d\n", status);
-
-            // status = read_msg(app, buffer, status);
-
+            // printf("Bytes recevied: %d\n", status);
             // parse message
             message_t msg = { 0 };
-            status = parseMessage(&msg, buffer);
+            status = parseMessage(&msg, tcp.buffer);
             printMessage(&msg);
             // if the message is kill, abort the loop (dont need to process anything else)
             // if the message is bad (-1), next iteration of the loop (drop it)
@@ -463,18 +466,14 @@ int initWinsock(appInfo_t* app) {
             break;
         } else {
             printf("recv failed: %d\n", WSAGetLastError());
-            closesocket(client_sock);
-            WSACleanup();
-            return 1;
+            goto error;
         }
 
         // placeholder action after receiving data (echoing it back)
-        status = send(client_sock, "OK\n", 3, 0);
+        status = send(tcp.cSocket, "OK\n", 3, 0);
         if (status == SOCKET_ERROR) {
             printf("send failed: %d\n", WSAGetLastError());
-            closesocket(client_sock);
-            WSACleanup();
-            return 1;
+            goto error;
         }
         printf("Bytes sent: %d\n", status);
 
@@ -486,13 +485,30 @@ int initWinsock(appInfo_t* app) {
     if (app->streamOpen)
         Pa_CloseStream(app->stream);
 
+    // free the buffer memory
+    free(tcp.buffer);
+
     // final shutdown and cleanup
-    status = shutdown(client_sock, SD_SEND); // shutdown can fail but there's nothing to do
-    closesocket(client_sock);
+    shutdown(tcp.cSocket, SD_SEND);
+    closesocket(tcp.cSocket);
     WSACleanup();
 
     printf("TCP server closed cleanly.\n");
 
     return 0;
+
+error:
+    // free the buffer memory
+    if (tcp.buffer != NULL)
+        free(tcp.buffer);
+
+    if (tcp.cSocket != INVALID_SOCKET) {
+        shutdown(tcp.cSocket, SD_SEND);
+        closesocket(tcp.cSocket);
+    }
+
+    WSACleanup();
+
+    return 1;
 }
 

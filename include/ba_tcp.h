@@ -87,25 +87,42 @@ typedef enum BA_MESSAGE_TYPES {
     QUERY_DEVICES_FOR_HOST_API
 } messageType_t;
 
+
 typedef struct BA_MSG {
     messageType_t type;
     int length;         // uint32_t (fixed width)
+    int data_off;       // should always be 8 bytes but for future use
     char* data;         // this is dangerous though because it wont live on the heap
                         // only for the duration of the socket function call
                         // however, that should be the duration of the entire program
                         // so this is probably ok... something to think about
 } message_t;
 
+
 typedef struct BA_UPDATE_PREFS_MSG {
     int hostIdx, inDevIdx, outDevIdx, inChanneln, outChanneln;
 } updatePrefsMsg_t;     // not actually used (but it might be)
+
 
 typedef struct BA_UPDATE_AMP_VALS_MSG {
     int gain, bass, treble, power;
 } updateAmpValsMsg_t;   // not actually used (but it might be)
 
+
+typedef struct BA_TCP_STATE {
+    WSADATA wsaData;
+    SOCKET  sSocket;
+    SOCKET  cSocket;
+    char*   buffer;
+    struct addrinfo*    result;
+    struct addrinfo     hints;
+} tcpState_t;
+
 // dont need this anymore
 // messageType_t parseMessageType(char* msg);
+
+
+void initTcpState(tcpState_t* tcp);
 
 /**
 Accepts a message byte array (char) & parses into the header struct.
