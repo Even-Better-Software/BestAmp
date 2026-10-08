@@ -117,8 +117,6 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
 {
-    (void)msg;
-
     // tokenize then parse
     /*
     char* next_token = NULL;
@@ -140,26 +138,33 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
     if (token && strlen(token) > 0) prefs->sampleRate = (float)atof(token);
     */
 
-    memcpy(&prefs->hostApiIdx, msg->data, sizeof(prefs->hostApiIdx));
+    if (msg->length != 0x1C)
+        fprintf(stderr, "\e[31update prefs content length should be 28 bytes.\e[0m\n");
+
+    char* tmp = msg->data;
+
+    memcpy(&prefs->hostApiIdx, tmp, sizeof(prefs->hostApiIdx));
     prefs->hostApiIdx = ntohl(prefs->hostApiIdx);
 
-    memcpy(&prefs->inDevIdx, msg->data += sizeof(prefs->hostApiIdx), sizeof(prefs->inDevIdx));
-    prefs->inDevIdx = ntohl(prefs->inDevIdx);   // advancing the pointer w/ no checks against the message length
-    memcpy(&prefs->outDevIdx, msg->data += sizeof(prefs->inDevIdx), sizeof(prefs->outDevIdx));
-    prefs->outDevIdx = ntohl(prefs->outDevIdx); // advancing the pointer w/ no checks against the message length
+    memcpy(&prefs->inDevIdx, tmp += sizeof(prefs->hostApiIdx), sizeof(prefs->inDevIdx));
+    prefs->inDevIdx = ntohl(prefs->inDevIdx);
 
-    memcpy(&prefs->inChanneln, msg->data += sizeof(prefs->outDevIdx), sizeof(prefs->inChanneln));
+    memcpy(&prefs->outDevIdx, tmp += sizeof(prefs->inDevIdx), sizeof(prefs->outDevIdx));
+    prefs->outDevIdx = ntohl(prefs->outDevIdx);
+
+    memcpy(&prefs->inChanneln, tmp += sizeof(prefs->outDevIdx), sizeof(prefs->inChanneln));
     prefs->inChanneln = ntohl(prefs->inChanneln);
-    memcpy(&prefs->outChanneln, msg->data += sizeof(prefs->inChanneln), sizeof(prefs->outChanneln));
+
+    memcpy(&prefs->outChanneln, tmp += sizeof(prefs->inChanneln), sizeof(prefs->outChanneln));
     prefs->outChanneln = ntohl(prefs->outChanneln);
 
-    memcpy(&prefs->framesPerBuffer, msg->data += sizeof(prefs->outChanneln), sizeof(prefs->framesPerBuffer));
+    memcpy(&prefs->framesPerBuffer, tmp += sizeof(prefs->outChanneln), sizeof(prefs->framesPerBuffer));
     prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
    
-    int tmp; 
-    memcpy(&tmp, msg->data += sizeof(prefs->framesPerBuffer), sizeof(tmp));
-    tmp = ntohl(tmp);   // cheat to get the correct byte-ordering
-    memcpy(&prefs->sampleRate, &tmp, sizeof(prefs->sampleRate));
+    int tmpi;
+    memcpy(&tmpi, tmp += sizeof(prefs->framesPerBuffer), sizeof(tmpi));
+    tmpi = ntohl(tmpi);   // cheat to get the correct byte-ordering
+    memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
      
     fprintf(stdout, BA_INFO " parsed updated prefs "); 
 }
@@ -167,8 +172,6 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
 
 void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
 {
-    (void)msg;
-    
     // tokenize then parse
     /*
     char* next_token = NULL;
@@ -183,11 +186,23 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
     token = strtok_s(NULL, ",", &next_token);
     if (token && strlen(token) > 0) ampValues->power = atoi(token);
     */
-       
-    // first byte is the message code, but that should already be pased at
-    // this stage
-    // read next byte, should translate as an integer which is the number
-    // of bytes in the message
+
+    if (msg->length != 0x10)
+        fprintf(stderr, "\e[31mupdate amp values content length should be 16 bytes.\e[0m\n");
+
+    char* tmp = msg->data;
+
+    memcpy(&ampValues->gain, tmp, sizeof(ampValues->gain));
+    ampValues->gain = ntohl(ampValues->gain);
+
+    memcpy(&ampValues->bass, tmp += sizeof(ampValues->gain), sizeof(ampValues->bass));
+    ampValues->bass = ntohl(ampValues->bass);
+
+    memcpy(&ampValues->treble, tmp += sizeof(ampValues->bass), sizeof(ampValues->treble));
+    ampValues->treble = ntohl(ampValues->treble);
+
+    memcpy(&ampValues->power, tmp += sizeof(ampValues->treble), sizeof(ampValues->power));
+    ampValues->power = ntohl(ampValues->power);
  
     fprintf(stdout, BA_INFO " parsed updated amp values "); 
 }
@@ -203,8 +218,6 @@ int processMessage(appInfo_t* app, message_t* msg)
 {
     PaError err;
     int status = 0;
-
-    printf("Bytes received: %d\n", status);
     
     // [WO] basically copy all of the setup code here. 
     // IF Request Type is 1
