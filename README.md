@@ -4,11 +4,13 @@ Software amplifier by Rodrigo & Will (BCIT).
 
 ## Dependencies
 
+### External
+
 [External Dir](./external)
 
-> anything that's not a system dependency.
-
 - [PortAudio 19](./external/portaudio)
+
+### System
 - Winsock 2
 
 ## Interfaces
