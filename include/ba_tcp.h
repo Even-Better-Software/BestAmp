@@ -52,27 +52,6 @@
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
 
-/**
-Regarding messages
-they absolutely must contain all values
-
-strtok / strtok_s is LAME & does not support consecutive delimeters & therefore
-empty CSV.
-
-update prefs:
-1,<HOSTAPIIDX>,<INDEVIDX>,<OUTDEVIDX>,<INCHANNELN>,<OUTCHANNELN>,<FRAMESPERBUFFER>,<SAMPLERATE>
-
-update amp values:
-2,<GAIN>,<BASS>,<TREBLE>,<TREBLE>
-
-20261005
-examples (w/ ncat directly transmitting the message):
-    2,3,3,-1,-1
-    2,6,5,6,8
-    1,2,16,16,2,2,512,44100.0
-    1,2,16,16,1,1,512,44100.0
-*/
-
 
 extern char* BA_NO_CONTENT;
 
