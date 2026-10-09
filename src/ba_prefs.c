@@ -13,34 +13,34 @@ void printBaPrefs(baPrefs_t* prefs)
             "outDevIdx: %d, "           \
             "inChanneln: %d, "          \
             "outChanneln: %d, "         \
-            "sampleRate: %f, "          \
-            "sampleFormat: %ld, "       \
             "framesPerBuffer: %d, "     \
+            "sampleFormat: %ld, "       \
+            "sampleRate: %f, "          \
         "}\n",
         prefs->hostApiIdx,
         prefs->inDevIdx,
         prefs->outDevIdx,
         prefs->inChanneln,
         prefs->outChanneln,
-        prefs->sampleRate,
+        prefs->framesPerBuffer,
         prefs->sampleFormat,
-        prefs->framesPerBuffer
+        prefs->sampleRate
     );
 }
 
 
 void initBaPrefs(baPrefs_t* prefs)
 {
-    prefs->hostApi = NULL;
-    prefs->inDev = prefs->outDev = NULL;
     prefs->hostApiIdx = -1;
     prefs->inDevIdx = -1;
     prefs->outDevIdx = -1;
     prefs->inChanneln = -1;
     prefs->outChanneln = -1;
-    prefs->sampleRate = -1;
     prefs->framesPerBuffer = -1;
-    prefs->sampleFormat = -1;
+    prefs->sampleFormat = paFloat32;
+    prefs->sampleRate = -1.0f;
+    prefs->hostApi = NULL;
+    prefs->inDev = prefs->outDev = NULL;
 }
 
 
@@ -108,7 +108,7 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
     prefs->sampleFormat = paFloat32;
     prefs->framesPerBuffer = 512;
 
-    return 1;
+    return 0;
 }
 
 int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
@@ -185,6 +185,6 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
     prefs->sampleFormat = paFloat32;
     prefs->framesPerBuffer = 512;
 
-    return 1;
+    return 0;
 }
 

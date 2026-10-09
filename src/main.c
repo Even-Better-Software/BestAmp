@@ -22,91 +22,21 @@
 
 
 /**
-Container for application state.
-    `hostApiInfo`
-        should be a pointer to `PaHostApiInfo` of the target host API
-    `inDevInfo`
-        should be a pointer to `PaDeviceInfo` of the target input device
-    `outDevInfo`
-        should be a pointer to `PaDeviceInfo` of the target output device
-*/
-typedef struct BA_APP_INFO {
-    ampValues_t* ampValues;
-    baPrefs_t* baPrefs;
-} appInfo_t;
-
-
-/**
-BestAmp PortAudio callback definition.
-*/
-int bestAmpCB(
-    const void* input,
-    void* output,
-    unsigned long framesPerBuffer,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags,
-    void* userData 
-);
-
-
-// BestAmp PortAudio callback implementation.
-int bestAmpCB(
-    const void* input,
-    void* output,
-    unsigned long framesPerBuffer,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags,
-    void* userData 
-)
-{
-    const float* in = (float*)input; // this has to be derived from the chosen buffer format
-    float* out = (float*)output; // this has to be derived from the chosen buffer format
-    // sysInfo_t* sysInfo = (sysInfo_t*)userData;
-    appInfo_t* appInfo = (appInfo_t*)userData;
-    // (void)userData;
-    (void)timeInfo;
-    (void)statusFlags;
-
-    // [WO] todo copy input to output
-    // where 2 is the number of channels
-    float y;
-    for (unsigned int i = 0; i < framesPerBuffer * appInfo->baPrefs->inChanneln; i++)
-    {
-        y = appInfo->ampValues->gain * *in;         // pre-amplification
-
-        y = biQuadFilter_process(
-            &appInfo->ampValues->bqf_bass, y);      // execute bass biQuad filter process
-        y = biQuadFilter_process(
-            &appInfo->ampValues->bqf_treble, y);    // execute treble biQuad filter process
-
-        y = appInfo->ampValues->power * y;          // power-amplification
-
-        *out = y; // write the processed sample to the output buffer
-        
-        // advance pointers 
-        out++;
-        in++;
-    }
-
-    return paContinue;
-}
-
-
-/**
 Program Entry
 */
 int main(int argc, char** argv)
 {
-    PaStream* stream;
     PaError e;
 
     ampValues_t amp = { 0 };
     baPrefs_t prefs = { 0 };
     
+    // [WO] this is no effectively deprecated, although these values
+    // technically server as inital values
     // app info state container
     appInfo_t appInfo = { 0 };
-    appInfo.ampValues = &amp;
-    appInfo.baPrefs = &prefs;
+    appInfo.ampValues = amp;
+    appInfo.baPrefs = prefs;
 
     initAmpValues(&amp); // BestAmp defaults (1,1,1,1)
     initBaPrefs(&prefs);
@@ -141,9 +71,9 @@ int main(int argc, char** argv)
    
  
     // show the values
-    printf(INFO);
+    printf(BA_INFO);
     printAmpValues(&amp);
-    printf(INFO);
+    printf(BA_INFO);
     printBaPrefs(&prefs);
     printf("\n");
 
@@ -152,33 +82,31 @@ int main(int argc, char** argv)
     if (e != paNoError)
         goto error;
 
+    // coalesce to system defaults (mostly)
+    e = coalesceBaPrefsToPaDefaults(&prefs);
+    if (e < 0) {
+        printf("\e[31merror coalescing user preferences\e[0m: %s\n", Pa_GetErrorText(e));
+        goto error;
+    }
+
+    printf(BA_INFO);
+    printBaPrefs(&prefs);
+    printf(BA_INFO);
+    printHostApiInfo(prefs.hostApi);
+    printf(BA_INFO);
+    printDeviceInfo(prefs.inDev);
+    printf(BA_INFO);
+    printDeviceInfo(prefs.outDev);
 
     // [WO] TCP connection loop begins here
-
-
     // Logic -> request to update system settings
     // resetup the entire thing (re-construct the portaudio stream)
     // request to update amp settings
     // only have to re-calculate amp biquad coeffecients, stream can
     // possibly remain running
 
-    // coalesce to system defaults (mostly)
-    e = coalesceBaPrefsToPaDefaults(&prefs);
-    if (e != 1) {
-        printf("\e[31merror coalescing user preferences\e[0m: %s\n", Pa_GetErrorText(e));
-        goto error;
-    }
-
-    printf(INFO);
-    printBaPrefs(&prefs);
-    printf(INFO);
-    printHostApiInfo(prefs.hostApi);
-    printf(INFO);
-    printDeviceInfo(prefs.inDev);
-    printf(INFO);
-    printDeviceInfo(prefs.outDev);
-
     // Create Input/Output stream parameters
+    /*
     PaStreamParameters iStreamParams, oStreamParams;
 
     iStreamParams.device = prefs.inDevIdx;
@@ -210,7 +138,7 @@ int main(int argc, char** argv)
     biQuadFilter_highShelf(&amp.bqf_treble, (float)amp.treble, prefs.sampleRate);
 
 
-    e = Pa_OpenStream(  &stream,
+    e = Pa_OpenStream(  &appInfo->stream,
                         &iStreamParams,
                         &oStreamParams,
                         prefs.sampleRate,
@@ -222,24 +150,24 @@ int main(int argc, char** argv)
         printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
-    e = Pa_StartStream(stream);
+    e = Pa_StartStream(appInfo->stream);
     if (e != paNoError) {
         printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(e));
         goto error;
     }
+    */
 
     // [WO] I know this is bad but...
-    getchar();
-
+    // getchar();
+    initWinsock(&appInfo);
+    
+    /*
     e = Pa_CloseStream(stream);
     if (e != paNoError) {
         printf("Close stream error: \e[31m%s\e[0m\n", Pa_GetErrorText(e));
         goto error;
     }
-
-
-    // [WO] TCP Connection loop ends here
-
+    */
    
     // terminate portaudio
     Pa_Terminate();

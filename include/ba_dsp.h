@@ -1,6 +1,7 @@
 #ifndef BA_DSP
 #define BA_DSP
 
+
 /**
 Sources:
 https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
@@ -70,7 +71,6 @@ To be called when amp bass dial is modified.
 */
 void biQuadFilter_lowShelf( biQuadFilter_t* bf,
                             float dbGain, float sampleFreq);
-
 
 #endif
 
