@@ -12,10 +12,19 @@ A BestAmp message shall be comprised of three components
 - content length
 - content
 
-`[type, 4B] [content length, 4B] [content 0-nB]`
+```
+0xFFFFFFFF  0xFFFFFFFF            0xFFFFFFFFFFFFFFFF ...
+type, 4B    content length, 4B    content, 0-(2^32-1)B
+```
 
 ### Header
 The header consists of the first 2 message components, the **type** & **content length**.
+
+
+```
+0xFFFFFFFF  0xFFFFFFFF            ...
+type, 4B    content length, 4B
+```
 
 #### Type Values
 Message types are differentiated as per the logical difference of request / reply. From a protocol perspective, any device *should* accept all message types. Practically, the client will not transmit replies & therefore BestAmp will not process replies, only emit them. Similarly, the client will not receive requests, only emit them (and therefore does not need to process them).
@@ -40,11 +49,36 @@ Outgoing (BestAmp -> Client) message types shall be the following:
 | 1004 | query default host API reply |
 | 1005 | query devices for host API reply |
 
+```
+0x00000001    0xFFFFFFFF            0xFFFFFFFFFFFFFFFF ...
+type (1), 4B  content length, 4B    content, 0-(2^32-1)B
+```
+```
+0x00000002    0xFFFFFFFF            0xFFFFFFFFFFFFFFFF ...
+type (2), 4B  content length, 4B    content, 0-(2^32-1)B
+```
+```
+0x00000003    0xFFFFFFFF            0xFFFFFFFFFFFFFFFF ...
+type (3), 4B  content length, 4B    content, 0-(2^32-1)B
+```
+
+etc.
+
 #### Content Length
 Should describe the number of bytes that the message content contains.
 
+```
+0xFFFFFFFF  0x00000002            0xFFFF
+type, 4B    content length, 4B    content, 2B in this case
+```
+
 ### Content
-There are no formal restrictions on the content part of a message.
+There are no formal restrictions on the content part of a message (so long as the content length accurately reflects the number of bytes in the content).
+
+```
+...    0xFFFFFFFFFFFFFFFF ...
+       content, 0-(2^32-1)B
+```
 
 ### Messages
 Definitions of the structures of BestAmp messages.
