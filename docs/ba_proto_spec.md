@@ -220,6 +220,9 @@ type (1005), 4B  content length (variable), 4B
 
 0xFFFFFFFF   0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 dev idx, 4B  dev human name, 32B
+
+0xFFFFFFFF   0xFFFFFFFF    0xFFFFFFFF    0xFFFFFFFF
+in ch n, 4B  out ch n, 4B  sample r, 4B  sample f, 4B
 ```
 Each device occupies 36B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
 
