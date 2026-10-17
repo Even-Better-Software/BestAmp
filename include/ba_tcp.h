@@ -98,7 +98,8 @@ typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
-    char*   buffer;
+    char*   rbuffer;
+    char*   wbuffer;
     struct addrinfo*    result;
     struct addrinfo     hints;
 } tcpState_t;
@@ -108,6 +109,7 @@ typedef struct BA_TCP_STATE {
 
 
 void initTcpState(tcpState_t* tcp);
+void cleanupTcpState(tcpState_t* tcp);
 
 /**
 Accepts a message byte array (char) & parses into the header struct.

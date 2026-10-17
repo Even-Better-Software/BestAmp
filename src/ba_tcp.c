@@ -9,12 +9,22 @@ void initTcpState(tcpState_t* tcp)
     tcp->sSocket = INVALID_SOCKET;
     tcp->cSocket = INVALID_SOCKET;
     tcp->result = NULL;
+    tcp->rbuffer = NULL;
+    tcp->wbuffer = NULL;
 
     ZeroMemory(&tcp->hints, sizeof (tcp->hints));
     tcp->hints.ai_family     = AF_INET;
     tcp->hints.ai_socktype   = SOCK_STREAM;
     tcp->hints.ai_protocol   = IPPROTO_TCP;
     tcp->hints.ai_flags      = AI_PASSIVE;
+}
+
+void cleanupTcpState(tcpState_t* tcp)
+{
+    if (tcp->rbuffer != NULL)
+        free(tcp->rbuffer);
+    if (tcp->wbuffer != NULL)
+        free(tcp->wbuffer);
 }
 
 
@@ -166,21 +176,13 @@ int processMessage(appInfo_t* app, message_t* msg)
 {
     PaError err;
     int status = 0;
-    
-    // [WO] basically copy all of the setup code here. 
-    // IF Request Type is 1
-    //      Parse the BA_UPDATE_PREFS_MSG -> set prefs accordingly
-    //          Set using coalesce function (so defaults can be used)
-    //      Setup the portaudio stream w/ the values from the request
-    //      Session State -> stream running [WO] ignore this
-    // IF Request Type is 2
-    //      Set amp values
 
     switch (msg->type) {
     case BAD:
         fprintf(stdout, BA_BAD_MESSAGE_RECIEVED);
         return BA_ERROR_FORMAT;
     case UPDATE_PREFS:
+        // [WO] longterm -> move these to message handler functions
         fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
         // Parse prefs from message
         baPrefs_t pTemp;
@@ -263,8 +265,6 @@ int processMessage(appInfo_t* app, message_t* msg)
             &avTemp.bqf_treble,
             (float)avTemp.treble, app->baPrefs.sampleRate);
         
-        // [WO] Should probably check that the stuff here is -1
-        // so keep old value if new value = -1
         app->ampValues = avTemp;
 
         break;
@@ -347,26 +347,22 @@ int initWinsock(appInfo_t* app) {
     // Receive until the peer shuts down the connection
     // [WO] clear & allocate this buffer
     // so I know that the memory is zeroed
-    tcp.buffer = NULL;
-    tcp.buffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+    tcp.rbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+    tcp.wbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
     do {
-        memset(tcp.buffer, 0, BA_BUFLEN);       // zero memory per iteration
-        status = recv(tcp.cSocket, tcp.buffer, BA_BUFLEN, 0);
+        memset(tcp.rbuffer, 0, BA_BUFLEN);       // zero memory per iteration
+        status = recv(tcp.cSocket, tcp.rbuffer, BA_BUFLEN, 0);
         if (status > 0) {
             // printf("Bytes recevied: %d\n", status);
             // parse message
             message_t msg = { 0 };
-            status = parseMessage(&msg, tcp.buffer);
-            printMessage(&msg);
-            // if the message is kill, abort the loop (dont need to process anything else)
-            // if the message is bad (-1), next iteration of the loop (drop it)
-            //      invalid message reply
-
-            // if the message is complex, route to the message processor?
-            //      or route all things to the message processor?
+            status = parseMessage(&msg, tcp.rbuffer);
             // if the message is valid, delegate to message type handler
             //      if handler success, OK reply or handler OK reply message & data
             //      if handler fails, BAD reply or handler BAD reply
+            // debug thing can probably go away after we are done implementation
+            printMessage(&msg);
+            // process message (delegates to message handlers)
             status = processMessage(app, &msg);
 
             if (status == BA_ERROR_FORMAT) {
@@ -404,10 +400,8 @@ int initWinsock(appInfo_t* app) {
     if (app->streamOpen)
         Pa_CloseStream(app->stream);
 
-    // free the buffer memory
-    free(tcp.buffer);
-
     // final shutdown and cleanup
+    cleanupTcpState(&tcp);
     shutdown(tcp.cSocket, SD_SEND);
     closesocket(tcp.cSocket);
     WSACleanup();
@@ -417,9 +411,7 @@ int initWinsock(appInfo_t* app) {
     return 0;
 
 error:
-    // free the buffer memory
-    if (tcp.buffer != NULL)
-        free(tcp.buffer);
+    cleanupTcpState(&tcp);
 
     if (tcp.cSocket != INVALID_SOCKET) {
         shutdown(tcp.cSocket, SD_SEND);

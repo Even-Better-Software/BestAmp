@@ -26,6 +26,9 @@ Program Entry
 */
 int main(int argc, char** argv)
 {
+    (void)argc;
+    (void)argv;
+
     PaError e;
 
     appInfo_t appInfo = { 0 };
@@ -63,7 +66,9 @@ int main(int argc, char** argv)
 
     // TCP LOOP BEGINS
     // [WO] add some return & then check that
-    initWinsock(&appInfo);
+    int sockExitStatus = initWinsock(&appInfo);
+    if (sockExitStatus != 0)
+        goto error;
     
     // terminate portaudio
     Pa_Terminate();
@@ -71,6 +76,7 @@ int main(int argc, char** argv)
     return 0;
 
 error:
+    // still need to terminate portaudio
     Pa_Terminate();
 
     printf(BA_HELP);
