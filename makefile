@@ -23,6 +23,8 @@ BA_PORTAUDIO_CB     = $(SRC_DIR)/ba_portaudio_cb.c
 BA_PORTAUDIO_CB_O   = $(BUILD_DIR)/ba_portaudio_cb.o
 BA_TCP		= $(SRC_DIR)/ba_tcp.c
 BA_TCP_O    = $(BUILD_DIR)/ba_tcp.o
+BA_TCP_MESSAGES     = $(SRC_DIR)/ba_tcp_messages.c
+BA_TCP_MESSAGES_O   = $(BUILD_DIR)/ba_tcp_messages.o
 
 STATS           = $(SRC_DIR)/stats.c
 STATS_TARGET    = $(BUILD_DIR)/stats.exe
@@ -58,9 +60,19 @@ $(BA_PORTAUDIO_CB_O): $(BA_PORTAUDIO_CB) | $(BUILD)
 $(BA_TCP_O): $(BA_TCP) | $(BUILD_DIR)
 > $(CC) $(BA_TCP) -o $(BA_TCP_O) -c $(CFLAGS)
 
+$(BA_TCP_MESSAGES_O): $(BA_TCP_MESSAGES) | $(BUILD_DIR)
+> $(CC) $(BA_TCP_MESSAGES) -o $(BA_TCP_MESSAGES_O) -c $(CFLAGS)
 
-$(TARGET): $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_PORTAUDIO_CB_O) $(BA_TCP_O) | $(BUILD_DIR)
-> $(CC) $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_PORTAUDIO_CB_O) $(BA_TCP_O) -o $@ $(CFLAGS) $(LDFLAGS)
+
+$(TARGET): $(MAIN) \
+    $(BA_DSP_O) \
+    $(BA_AMP_O) \
+    $(BA_PREFS_O) \
+    $(BA_PORTAUDIO_HELPERS_O) \
+    $(BA_PORTAUDIO_CB_O) \
+    $(BA_TCP_MESSAGES_O) \
+    $(BA_TCP_O) | $(BUILD_DIR)
+> $(CC) $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_PORTAUDIO_CB_O) $(BA_TCP_MESSAGES_O) $(BA_TCP_O) -o $@ $(CFLAGS) $(LDFLAGS)
 
 
 $(STATS_TARGET): $(STATS) $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
