@@ -3,9 +3,15 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <stdio.h>
+#include <string.h>
+#include <portaudio.h>
 
-#include "ba_prefs.h"
+#include "ba_portaudio_helpers.h"
+#include "ba_portaudio_cb.h"
 #include "ba_common.h"
+#include "ba_prefs.h"
+#include "ba_amp.h"
 
 
 #define BA_PORT "7080"
