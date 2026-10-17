@@ -13,12 +13,7 @@
 #define BA_NAME "BestAmp.exe"
 #define BA_HELP BA_NAME \
 " program useage:\n" \
-"\t" BA_NAME " <GAIN> <BASS> <TREBLE> <POWER>\n" \
-"\t\twhere GAIN,BASS,TREBLE,& POWER are numbers (integers) " \
-"that are in the range 1-10, if a value is outside this range " \
-"it will be set to 1 (the minimum)\n"
-
-#define BA_EXPECTED_ARGS (5)
+"\t" BA_NAME
 
 
 /**
