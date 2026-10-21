@@ -1,4 +1,5 @@
 #include "ba_tcp.h"
+#include "ba_tcp_messages.h"
 
 
 char* BA_NO_CONTENT = NULL;
@@ -11,7 +12,6 @@ void initTcpState(tcpState_t* tcp)
     tcp->result = NULL;
     tcp->rbuffer = NULL;
     tcp->wbuffer = NULL;
-    tcp->fatal = 0;
     tcp->sts    = 0;
 
     ZeroMemory(&tcp->hints, sizeof (tcp->hints));
@@ -38,14 +38,12 @@ int processRequest(appInfo_t* app,
     PaError err;
     int status = 0;
 
-    (void)rmsg;
-    (void)wbuf;
-
     // A valid request message
+    // [WO] longterm -> move these to message handler functions
+    //      move the implementations for each message type to their own function
     if (msg->type >= KILL && msg->type <= QUERY_DEVICES_FOR_HOST_API) {
         switch (msg->type) {
         case UPDATE_PREFS:
-            // [WO] longterm -> move these to message handler functions
             fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
             // Parse prefs from message
             baPrefs_t pTemp;
@@ -77,10 +75,14 @@ int processRequest(appInfo_t* app,
 
             // Is format supported test 
             // Pa_IsFormatSupported
+            // if the format it not supported we write a bad message reply
+            //      we should not write a bad message reply, rather the reply as per the spec
+            // return from this method w/ BA_CONTINUE (since the server is fine, basically we are dropping this request)
             err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
             if (err != paNoError) {
                 printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
-                return BA_ERROR_FORMAT;
+                badMessageReply(rmsg, wbuf);
+                return BA_CONTINUE;
             }
             // Format supported, so pTemp becomes app->prefs
             app->baPrefs = pTemp;
@@ -93,6 +95,7 @@ int processRequest(appInfo_t* app,
                 &app->ampValues.bqf_treble,
                 (float)app->ampValues.treble, pTemp.sampleRate);
 
+            // Start the portaudio stream
             err = Pa_OpenStream(  &app->stream,
                                 &iStreamParams,
                                 &oStreamParams,
@@ -112,7 +115,11 @@ int processRequest(appInfo_t* app,
                 return BA_ERROR_FATAL;
             }
             app->streamRunning = 1;
-            break;
+   
+            // Send an OK reply to the client 
+            genericOkReply(rmsg, wbuf);
+            return BA_CONTINUE;
+
         case UPDATE_AMP_VALS:
             fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
             ampValues_t avTemp;
@@ -235,26 +242,24 @@ int initWinsock(appInfo_t* app) {
 
         if (status > 0) {
             // parse message
+            //      parse returns n < 0 it fails write bad message reply
             status = parseMessage(&reqMsg, tcp.rbuffer);
-            // parse returns n < 0 it fails write bad message reply
             if (status < 0) {
                 printf(BA_BAD_MESSAGE_RECIEVED);
                 badMessageReply(&repMsg, tcp.wbuffer);
                 tcp.sts = 1;
                 goto cleanup;
             }
-            // DEBUGGING see the request (message info, not contents per se)
             printMessage(&reqMsg);
 
             // process request / message (delegates to message handlers)
+            // process message paths will write specific replies to `repMsg`
+            //      where this is the accounting for the message
+            // and into `tcp.wbuffer`
+            //      where this is the data for the message
             status = processRequest(app, &reqMsg, &repMsg,
                 tcp.rbuffer, tcp.wbuffer);
-            // [WO] testing, all replies for now are OK
-            genericOkReply(&repMsg, tcp.wbuffer);
-            if (status == BA_ERROR_FORMAT) {
-                fprintf(stderr, BA_BAD_MESSAGE_RECIEVED);
-                badMessageReply(&repMsg, tcp.wbuffer);
-            } else if (status == BA_ERROR_FATAL) {
+            if (status == BA_ERROR_FATAL) {
                 fprintf(stderr, BA_PORTAUDIO_ERROR);
                 badMessageReply(&repMsg, tcp.wbuffer);
                 tcp.sts = 1;
@@ -264,6 +269,7 @@ int initWinsock(appInfo_t* app) {
             printMessage(&repMsg);
 
             // send the reply
+            //      we don't explicity check this but this is the BA_CONTINUE path
             status = send(tcp.cSocket, tcp.wbuffer,
                 repMsg.length + BA_HEADER_SIZE_B, 0);
             if (status == SOCKET_ERROR) {

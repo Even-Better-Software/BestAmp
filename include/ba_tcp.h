@@ -52,9 +52,10 @@
 
 #define BA_MESSAGE_TYPE "%d"
 
-#define BA_ERROR_FORMAT -1
-#define BA_ERROR_FATAL -2
-#define BA_KILL -3
+#define BA_CONTINUE     (0)
+#define BA_ERROR_FORMAT (-1)
+#define BA_ERROR_FATAL  (-2)
+#define BA_KILL         (-3)
 
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
@@ -67,7 +68,6 @@ typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
-    int     fatal;
     int     sts;    // stuff to send
     char*   rbuffer;
     char*   wbuffer;

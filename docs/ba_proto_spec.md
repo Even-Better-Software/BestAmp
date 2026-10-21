@@ -1,5 +1,5 @@
 # BestAmp Protocol Specification
-### v1, Will Otterbein, 20261014
+### v2, Will Otterbein, 20261021
 
 This document serves to (somewhat) formally define the structure of the application layer protocol of BestAmp.
 
