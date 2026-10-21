@@ -47,6 +47,7 @@ int processRequest(appInfo_t* app,
             fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
             // Parse prefs from message
             baPrefs_t pTemp;
+            updatePrefsRep_t reply = {0};
             initBaPrefs(&pTemp);
             parsePrefsFromMsg(&pTemp, msg, rbuf);
             printBaPrefs(&pTemp);
@@ -78,10 +79,13 @@ int processRequest(appInfo_t* app,
             // if the format it not supported we write a bad message reply
             //      we should not write a bad message reply, rather the reply as per the spec
             // return from this method w/ BA_CONTINUE (since the server is fine, basically we are dropping this request)
+            // send the update prefs bad preferences reply
             err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
             if (err != paNoError) {
                 printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
-                badMessageReply(rmsg, wbuf);
+                // badMessageReply(rmsg, wbuf);
+                reply.code = 1;
+                updatePreferencesReply(rmsg, wbuf, &reply);
                 return BA_CONTINUE;
             }
             // Format supported, so pTemp becomes app->prefs
@@ -116,8 +120,9 @@ int processRequest(appInfo_t* app,
             }
             app->streamRunning = 1;
    
-            // Send an OK reply to the client 
-            genericOkReply(rmsg, wbuf);
+            // Send the update prefs OK reply
+            reply.code = 0;
+            updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
 
         case UPDATE_AMP_VALS:

@@ -15,6 +15,8 @@
 #define BA_HEADER_SIZE_B    (8)
 #define BA_NUMERIC_FIELD_B  (4)
 
+#define BA_WRITE_BUFFER_NULL "failed to write reply, write buffer is null\n"
+
 
 typedef enum BA_MESSAGE_TYPES {
     KILL            = 0,        // stop the application
@@ -24,8 +26,8 @@ typedef enum BA_MESSAGE_TYPES {
     QUERY_DEFAULT_HOST_API,
     QUERY_DEVICES_FOR_HOST_API,
 
-    /*
-    */
+    UPDATE_PREFS_REPLY      = 1001,
+    UPDATE_AMP_VALS_REPLY   = 1002,
 
     BYE     = 9997,
     OK      = 9998,
@@ -38,6 +40,11 @@ typedef struct BA_MSG {
     int length;         // uint32_t (fixed width)
     int data_off;       // should always be 8 bytes but for future use
 } message_t;
+
+
+typedef struct BA_UPDATE_PREFS_REP {
+    int code;           // 0 == OK, 1 == BAD preferences
+} updatePrefsRep_t;
 
 
 /**
@@ -75,6 +82,10 @@ Writes ok message accounting into `rpmsg`
 Writes ok message into `wbuf`
 */
 void genericOkReply(message_t* rpmsg, char* wbuf);
+
+
+void updatePreferencesReply(message_t* rpmsg, char* wbuf, updatePrefsRep_t* content);
+
 
 #endif
 

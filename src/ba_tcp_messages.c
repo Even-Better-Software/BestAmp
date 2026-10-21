@@ -64,7 +64,7 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
-    if (msg->length != 0x1C)
+    if (msg->length != 0x20 /*0x1C*/)
         fprintf(stderr, "\e[31mupdate prefs content length should be 28 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
@@ -144,7 +144,7 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
 void badMessageReply(message_t* rpmsg, char* wbuf)
 {
     if (wbuf == NULL) {
-        fprintf(stderr, "write buffer is null\n");
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
     int type    = rpmsg->type   = BAD;
@@ -159,7 +159,7 @@ void badMessageReply(message_t* rpmsg, char* wbuf)
 void byeMessageReply(message_t* rpmsg, char* wbuf)
 {
     if (wbuf == NULL) {
-        fprintf(stderr, "writer buffer is null\n");
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
     int type    = rpmsg->type   = BYE;
@@ -174,7 +174,7 @@ void byeMessageReply(message_t* rpmsg, char* wbuf)
 void genericOkReply(message_t* rpmsg, char* wbuf)
 {
     if (wbuf == NULL) {
-        fprintf(stderr, "write buffer is null\n");
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
     int type    = rpmsg->type   = OK;
@@ -184,4 +184,23 @@ void genericOkReply(message_t* rpmsg, char* wbuf)
     memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
     memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
 }
+
+
+void updatePreferencesReply(
+    message_t* rpmsg, char* wbuf, updatePrefsRep_t* content
+) {
+    if (wbuf == NULL) {
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
+        return;
+    }
+    int type    = rpmsg->type   = UPDATE_PREFS_REPLY;
+    int length  = rpmsg->length = BA_NUMERIC_FIELD_B;
+    int htype   = htonl(type);
+    int hlength = htonl(length);
+    int hcode   = htonl(content->code);
+    memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, &hlength, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + (2*BA_NUMERIC_FIELD_B), &hcode, BA_NUMERIC_FIELD_B);
+}
+
 
