@@ -50,6 +50,8 @@ Outgoing (BestAmp -> Client) message types shall be the following:
 | 1003 | query host APIs reply |
 | 1004 | query default host API reply |
 | 1005 | query devices for host API reply |
+| 9998 | generic OK |
+| 9999 | Bad message |
 
 ```
 0x00000001    0xFFFFFFFF            0xFFFFFFFFFFFFFFFF ...

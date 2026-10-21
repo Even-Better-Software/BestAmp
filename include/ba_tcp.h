@@ -67,6 +67,8 @@ typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
+    int     fatal;
+    int     sts;    // stuff to send
     char*   rbuffer;
     char*   wbuffer;
     struct addrinfo*    result;
@@ -80,27 +82,17 @@ typedef struct BA_TCP_STATE {
 void initTcpState(tcpState_t* tcp);
 void cleanupTcpState(tcpState_t* tcp);
 
-
-int processRequest(appInfo_t* app, message_t* msg);
+/**
+Process a request, reads from `msg`, replies will be written to `rmsg`.
+    `msg` & `rmsg` must be initialized.
+*/
+int processRequest(appInfo_t* app, message_t* msg, message_t* rmsg,
+    char* rbuf, char* wbuf);
 
 /**
 Windows Socket TCP Loop.
 */
 int initWinsock(appInfo_t* app);
-
-
-/**
-BestAmp PortAudio callback definition.
-    [WO] I don't really know where to put this
-*/
-int bestAmpCB(
-    const void* input,
-    void* output,
-    unsigned long framesPerBuffer,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags,
-    void* userData 
-);
 
 #endif
 

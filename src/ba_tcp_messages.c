@@ -53,12 +53,10 @@ int parseMessage(message_t* pMsg, char* msg)
      
     if (lengthByte == 0) {
         pMsg->length = 0;
-        pMsg->data = NULL;
     } else if (lengthByte > 0) {
         // this many bytes should be in the message
         pMsg->length = lengthByte;
         // do I need to advance twice or just once cause I already advanced?
-        pMsg->data = msg;
         pMsg->data_off = sizeof(typeByte) + sizeof(lengthByte);
     }
 
@@ -66,7 +64,7 @@ int parseMessage(message_t* pMsg, char* msg)
 }
 
 
-void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
+void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
     if (msg->length != 0x1C)
         fprintf(stderr, "\e[31update prefs content length should be 28 bytes.\e[0m\n");
@@ -74,37 +72,37 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
     int t_data_off = msg->data_off;
 
     memcpy(&prefs->hostApiIdx, (
-        msg->data + t_data_off
+        rbuf + t_data_off
     ), sizeof(prefs->hostApiIdx));
     prefs->hostApiIdx = ntohl(prefs->hostApiIdx);
 
     memcpy(&prefs->inDevIdx, (
-        msg->data + (t_data_off += sizeof(prefs->hostApiIdx))
+        rbuf + (t_data_off += sizeof(prefs->hostApiIdx))
     ), sizeof(prefs->inDevIdx));
     prefs->inDevIdx = ntohl(prefs->inDevIdx);
 
     memcpy(&prefs->outDevIdx, (
-        msg->data + (t_data_off += sizeof(prefs->inDevIdx))
+        rbuf + (t_data_off += sizeof(prefs->inDevIdx))
     ), sizeof(prefs->outDevIdx));
     prefs->outDevIdx = ntohl(prefs->outDevIdx);
 
     memcpy(&prefs->inChanneln, (
-        msg->data + (t_data_off += sizeof(prefs->outDevIdx))
+        rbuf + (t_data_off += sizeof(prefs->outDevIdx))
     ), sizeof(prefs->inChanneln));
     prefs->inChanneln = ntohl(prefs->inChanneln);
 
     memcpy(&prefs->outChanneln, (
-        msg->data + (t_data_off += sizeof(prefs->inChanneln))
+        rbuf + (t_data_off += sizeof(prefs->inChanneln))
     ), sizeof(prefs->outChanneln));
     prefs->outChanneln = ntohl(prefs->outChanneln);
 
     memcpy(&prefs->framesPerBuffer, (
-        msg->data + (t_data_off += sizeof(prefs->outChanneln))
+        rbuf + (t_data_off += sizeof(prefs->outChanneln))
     ), sizeof(prefs->framesPerBuffer));
     prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
   
     int tmpi;
-    memcpy(&tmpi, msg->data + (
+    memcpy(&tmpi, rbuf + (
         t_data_off += sizeof(prefs->framesPerBuffer)
     ), sizeof(tmpi));
     tmpi = ntohl(tmpi);   // cheat to get the correct byte-ordering
@@ -114,7 +112,7 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
 }
 
 
-void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
+void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
 {
     if (msg->length != 0x10)
         fprintf(stderr, "\e[31mupdate amp values content length should be 16 bytes.\e[0m\n");
@@ -122,25 +120,51 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
     int t_data_off = msg->data_off;
 
     memcpy(&ampValues->gain, (
-        msg->data + t_data_off
+        rbuf + t_data_off
     ), sizeof(ampValues->gain));
     ampValues->gain = ntohl(ampValues->gain);
 
     memcpy(&ampValues->bass, (
-        msg->data + (t_data_off += sizeof(ampValues->gain))
+        rbuf + (t_data_off += sizeof(ampValues->gain))
     ), sizeof(ampValues->bass));
     ampValues->bass = ntohl(ampValues->bass);
 
     memcpy(&ampValues->treble, (
-        msg->data + (t_data_off += sizeof(ampValues->bass))
+        rbuf + (t_data_off += sizeof(ampValues->bass))
     ), sizeof(ampValues->treble));
     ampValues->treble = ntohl(ampValues->treble);
 
     memcpy(&ampValues->power, (
-        msg->data + (t_data_off += sizeof(ampValues->treble))
+        rbuf + (t_data_off += sizeof(ampValues->treble))
     ), sizeof(ampValues->power));
     ampValues->power = ntohl(ampValues->power);
  
     fprintf(stdout, BA_INFO " parsed updated amp values "); 
+}
+
+
+void badMessageReply(message_t* rpmsg, char* wbuf)
+{
+    if (wbuf == NULL) {
+        fprintf(stderr, "write buffer is null");
+        return;
+    }
+    int type    = rpmsg->type   = BAD;
+    int length  = rpmsg->length = 0;
+    memcpy(wbuf, (void*)&type, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&length, BA_NUMERIC_FIELD_B);
+}
+
+
+void genericOkReply(message_t* rpmsg, char* wbuf)
+{
+    if (wbuf == NULL) {
+        fprintf(stderr, "write buffer is null");
+        return;
+    }
+    int type    = rpmsg->type   = OK;
+    int length  = rpmsg->length = 0;
+    memcpy(wbuf, (void*)&type, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&length, BA_NUMERIC_FIELD_B);
 }
 
