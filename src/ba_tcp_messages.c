@@ -147,8 +147,8 @@ void badMessageReply(message_t* rpmsg, char* wbuf)
         fprintf(stderr, "write buffer is null\n");
         return;
     }
-    int type    = rpmsg->type   = htonl(BAD);
-    int length  = rpmsg->length = htonl(0);
+    int type    = rpmsg->type;
+    int length  = rpmsg->length;
     int htype   = htonl(type);
     int hlength = htonl(length);
     memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
@@ -162,8 +162,8 @@ void byeMessageReply(message_t* rpmsg, char* wbuf)
         fprintf(stderr, "writer buffer is null\n");
         return;
     }
-    int type    = rpmsg->type   = htonl(BYE);
-    int length  = rpmsg->length = htonl(0);
+    int type    = rpmsg->type;
+    int length  = rpmsg->length;
     int htype   = htonl(type);
     int hlength = htonl(length);
     memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
@@ -177,8 +177,8 @@ void genericOkReply(message_t* rpmsg, char* wbuf)
         fprintf(stderr, "write buffer is null\n");
         return;
     }
-    int type    = rpmsg->type   = htonl(OK);
-    int length  = rpmsg->length = htonl(0);
+    int type    = rpmsg->type;
+    int length  = rpmsg->length;
     int htype   = htonl(type);
     int hlength = htonl(length);
     memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
