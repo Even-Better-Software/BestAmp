@@ -251,7 +251,6 @@ int initWinsock(appInfo_t* app) {
                 tcp.rbuffer, tcp.wbuffer);
             // [WO] testing, all replies for now are OK
             genericOkReply(&repMsg, tcp.wbuffer);
-            printMessage(&repMsg);
             if (status == BA_ERROR_FORMAT) {
                 fprintf(stderr, BA_BAD_MESSAGE_RECIEVED);
                 badMessageReply(&repMsg, tcp.wbuffer);
@@ -262,6 +261,7 @@ int initWinsock(appInfo_t* app) {
                 exitCode = 1;
                 goto cleanup;
             }
+            printMessage(&repMsg);
 
             // send the reply
             status = send(tcp.cSocket, tcp.wbuffer,
