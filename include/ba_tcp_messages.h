@@ -12,8 +12,8 @@
 #include "ba_amp.h"
 
 
-#define BA_HEADER_SIZE_B (8)
-#define BA_NUMERIC_FIELD_B (4)
+#define BA_HEADER_SIZE_B    (8)
+#define BA_NUMERIC_FIELD_B  (4)
 
 
 typedef enum BA_MESSAGE_TYPES {

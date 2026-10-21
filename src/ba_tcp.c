@@ -1,5 +1,4 @@
 #include "ba_tcp.h"
-#include "ba_tcp_messages.h"
 
 
 char* BA_NO_CONTENT = NULL;
@@ -39,12 +38,12 @@ int processRequest(appInfo_t* app,
     PaError err;
     int status = 0;
 
+    (void)rmsg;
+    (void)wbuf;
+
     // A valid request message
     if (msg->type >= KILL && msg->type <= QUERY_DEVICES_FOR_HOST_API) {
         switch (msg->type) {
-        case BAD:
-            fprintf(stdout, BA_BAD_MESSAGE_RECIEVED);
-            return BA_ERROR_FORMAT;
         case UPDATE_PREFS:
             // [WO] longterm -> move these to message handler functions
             fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
@@ -256,8 +255,6 @@ int initWinsock(appInfo_t* app) {
             if (status == BA_ERROR_FORMAT) {
                 fprintf(stderr, BA_BAD_MESSAGE_RECIEVED);
                 badMessageReply(&repMsg, tcp.wbuffer);
-                tcp.sts = 1;
-                goto cleanup;
             } else if (status == BA_ERROR_FATAL) {
                 fprintf(stderr, BA_PORTAUDIO_ERROR);
                 badMessageReply(&repMsg, tcp.wbuffer);

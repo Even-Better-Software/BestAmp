@@ -29,9 +29,7 @@ int parseMessage(message_t* pMsg, char* msg)
     switch (typeByte) {
     case KILL:
         pMsg->type = KILL;
-        pMsg->length = 0;
-        pMsg->data = NULL;
-        return 0;
+        break;
     case UPDATE_PREFS:
         pMsg->type = UPDATE_PREFS; 
         break;
@@ -67,7 +65,7 @@ int parseMessage(message_t* pMsg, char* msg)
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
     if (msg->length != 0x1C)
-        fprintf(stderr, "\e[31update prefs content length should be 28 bytes.\e[0m\n");
+        fprintf(stderr, "\e[31mupdate prefs content length should be 28 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
 
@@ -108,7 +106,7 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
     tmpi = ntohl(tmpi);   // cheat to get the correct byte-ordering
     memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
      
-    fprintf(stdout, BA_INFO " parsed updated prefs "); 
+    fprintf(stdout, BA_INFO " parsed updated prefs\n"); 
 }
 
 
@@ -139,32 +137,51 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
     ), sizeof(ampValues->power));
     ampValues->power = ntohl(ampValues->power);
  
-    fprintf(stdout, BA_INFO " parsed updated amp values "); 
+    fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }
 
 
 void badMessageReply(message_t* rpmsg, char* wbuf)
 {
     if (wbuf == NULL) {
-        fprintf(stderr, "write buffer is null");
+        fprintf(stderr, "write buffer is null\n");
         return;
     }
-    int type    = rpmsg->type   = BAD;
-    int length  = rpmsg->length = 0;
-    memcpy(wbuf, (void*)&type, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&length, BA_NUMERIC_FIELD_B);
+    int type    = rpmsg->type   = htonl(BAD);
+    int length  = rpmsg->length = htonl(0);
+    int htype   = htonl(type);
+    int hlength = htonl(length);
+    memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
+}
+
+
+void byeMessageReply(message_t* rpmsg, char* wbuf)
+{
+    if (wbuf == NULL) {
+        fprintf(stderr, "writer buffer is null\n");
+        return;
+    }
+    int type    = rpmsg->type   = htonl(BYE);
+    int length  = rpmsg->length = htonl(0);
+    int htype   = htonl(type);
+    int hlength = htonl(length);
+    memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
 }
 
 
 void genericOkReply(message_t* rpmsg, char* wbuf)
 {
     if (wbuf == NULL) {
-        fprintf(stderr, "write buffer is null");
+        fprintf(stderr, "write buffer is null\n");
         return;
     }
-    int type    = rpmsg->type   = OK;
-    int length  = rpmsg->length = 0;
-    memcpy(wbuf, (void*)&type, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&length, BA_NUMERIC_FIELD_B);
+    int type    = rpmsg->type   = htonl(OK);
+    int length  = rpmsg->length = htonl(0);
+    int htype   = htonl(type);
+    int hlength = htonl(length);
+    memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
 }
 
