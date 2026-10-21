@@ -17,7 +17,7 @@
 
 #define BA_PORT "7080"
 #define BA_PORT_I (7081)
-#define BA_BUFLEN (512)
+#define BA_BUFLEN (4096)
 #define BA_MSG_DELIM "\n"
 
 #define BA_WSA_ERROR BA_ERROR "WSAStartup failed.\n"
@@ -76,9 +76,6 @@ typedef struct BA_TCP_STATE {
     struct addrinfo*    result;
     struct addrinfo     hints;
 } tcpState_t;
-
-// dont need this anymore
-// messageType_t parseMessageType(char* msg);
 
 
 void initTcpState(tcpState_t* tcp);

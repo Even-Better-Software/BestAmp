@@ -37,14 +37,13 @@ int processRequest(appInfo_t* app,
 )
 {
     PaError err;
-    int status = 0;
 
     // A valid request message
     // [WO] longterm -> move these to message handler functions
     //      move the implementations for each message type to their own function
     if (msg->type >= KILL && msg->type <= QUERY_DEVICES_FOR_HOST_API) {
         switch (msg->type) {
-        case UPDATE_PREFS:
+        case UPDATE_PREFS: {
             fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
             // Parse prefs from message
             baPrefs_t pTemp;
@@ -126,7 +125,8 @@ int processRequest(appInfo_t* app,
             updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
 
-        case UPDATE_AMP_VALS:
+        }
+        case UPDATE_AMP_VALS: {
             fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
             ampValues_t avTemp;
             initAmpValues(&avTemp);
@@ -150,39 +150,120 @@ int processRequest(appInfo_t* app,
             genericOkReply(rmsg, wbuf);
             return BA_CONTINUE;
 
-        case QUERY_HOST_APIS:
+        }
+        case QUERY_HOST_APIS: {
+            // [WO] BA_BUFLEN overflow risk (variable length)
+
+            int replySizeEstimate = 0;
+            queryHostApiRep_t reply = { 0 };
+
             fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
-            fprintf(stdout, BA_UNIMPLEMENTED);
+            // fprintf(stdout, BA_UNIMPLEMENTED);
 
             // ask port audio for the host APIs
-            int hostApiCount = Pa_GetHostApiCount();
+            // just pass this to the message processor basically
+            // I need memory, I need N * sizeof() to store const pointers to hostapi info structs
+            PaHostApiIndex hostApiCount = Pa_GetHostApiCount();
+            fprintf(stderr, "%d host apis\n", hostApiCount);
+            const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+                calloc(hostApiCount, sizeof(PaHostApiIndex*));
             for (int i = 0; i < hostApiCount; i++) {
+                const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(i);
+                *(hostApis + i) = hinfo;
             }
+            reply.hostApiCount = hostApiCount;
+            reply.hostApis = hostApis;
+
+            // we should probably check the buffer length here & scale it if
+            //      necessary
+            //      Im thinking an exponentially bounded growth
+            //          (double it until some max)
+            //      figure out the maximum number of host APIs
+            //          (no idea what this is)
+            replySizeEstimate = ((hostApiCount * (36)) + 8); // 4B id + 32B name 
+            fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+            if (replySizeEstimate >= BA_BUFLEN) {
+                fprintf(stderr, "message overflow risk\n");
+            } // [WO] for now, this will just whine into stderr
+
+            queryHostApisReply(rmsg, wbuf, &reply);
+            free(hostApis);
 
             return BA_CONTINUE;
 
-        case QUERY_DEFAULT_HOST_API:
+        }
+        case QUERY_DEFAULT_HOST_API: {
             fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
-            fprintf(stdout, BA_UNIMPLEMENTED);
+            fprintf(stderr, BA_UNIMPLEMENTED);
 
             return BA_CONTINUE;
 
-        case QUERY_DEVICES_FOR_HOST_API:
+        }
+        case QUERY_DEVICES_FOR_HOST_API: {
+            // [WO] BA_BUFLEN overflow risk (variable length)
+
+            int hostApiIdx = 0;
+            int replySizeEstimate = 0;
+            queryDeviceRep_t reply = {0};
+
+            parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
+
             fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
-            fprintf(stdout, BA_UNIMPLEMENTED);
+            fprintf(stderr, "query devices for: %d\n", hostApiIdx);
+
+            // Get the Host API Info Struct
+            //      if this fails, then the index supplied is invalid so
+            //      we send the bad reply back to the client
+            const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
+            if (hostApi == NULL) {
+                fprintf(stderr, "\e[31mgiven host api index returned NULL hostapi info struct must be invalid.\e[0m\n");
+                queryDevicesBadReply(rmsg, wbuf);
+                return BA_CONTINUE;
+            }
+            reply.hostApiIdx = hostApiIdx;
+            reply.deviceIdxes = (int*)
+                calloc(hostApi->deviceCount, sizeof(int));
+            reply.devices = (const PaDeviceInfo**)
+                calloc(hostApi->deviceCount, sizeof(PaDeviceInfo*));
+            for (int i = 0; i < hostApi->deviceCount; i++) {
+                PaDeviceIndex deviceIdx     = Pa_HostApiDeviceIndexToDeviceIndex(hostApiIdx, i);
+                const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
+                *(reply.deviceIdxes + i)    = deviceIdx;
+                *(reply.devices + i)        = device;
+
+                fprintf(stderr, "host device idx: %d, global device idx: %d\n",
+                    i, deviceIdx);
+            }
+            // 4 32 4 4 4 4 = 52 bytes per device
+            // we should probably check the buffer length here & scale it if
+            //      necessary
+            //      Im thinking an exponentially bounded growth
+            //          (double it until some max)
+            //      figure out the maximum number of host APIs
+            //          (no idea what this is)
+            replySizeEstimate = ((hostApi->deviceCount * (48)) + 8); // 4B id + 32B name 
+            fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+            if (replySizeEstimate >= BA_BUFLEN) {
+                fprintf(stderr, "message overflow risk\n");
+            } // [WO] for now, this will just whine into stderr
+
+            // Get the devices for the queried host API
+            free(reply.deviceIdxes);
+            free(reply.devices);
+
+            return BA_CONTINUE;
+        }
+        case KILL: {
 
             return BA_CONTINUE;
 
-        case KILL:
-
-            return BA_CONTINUE;
-        } 
-
+        }} 
     // Not a request message
     } else {
         fprintf(stderr, BA_INVALID_REQUEST_TYPE);
         return BA_CONTINUE;
     }
+    return BA_CONTINUE;
 }
 
 

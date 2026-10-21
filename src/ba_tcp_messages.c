@@ -141,6 +141,22 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
 }
 
 
+void parseDeviceQueryFromMsg(int* hostApi, message_t* msg, char* rbuf)
+{
+    if (msg->length != 0x04)
+        fprintf(stderr, "\e[31mquery host apis content length should be 4 bytes\e[0m\n");
+
+    int t_data_off = msg->data_off;
+    int t = 0;
+    memcpy(&t, (
+        rbuf + t_data_off
+    ), sizeof(int));
+    *hostApi = ntohl(t);
+
+    fprintf(stderr, BA_INFO " parsed device query\n");
+}
+
+
 void badMessageReply(message_t* rpmsg, char* wbuf)
 {
     if (wbuf == NULL) {
@@ -166,8 +182,8 @@ void byeMessageReply(message_t* rpmsg, char* wbuf)
     int length  = rpmsg->length = 0;
     int htype   = htonl(type);
     int hlength = htonl(length);
-    memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, &hlength, BA_NUMERIC_FIELD_B);
 }
 
 
@@ -181,8 +197,8 @@ void genericOkReply(message_t* rpmsg, char* wbuf)
     int length  = rpmsg->length = 0;
     int htype   = htonl(type);
     int hlength = htonl(length);
-    memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
+    memcpy(wbuf + BA_NUMERIC_FIELD_B, &hlength, BA_NUMERIC_FIELD_B);
 }
 
 
@@ -207,6 +223,8 @@ void updatePreferencesReply(
 void updateAmpValuesReply(
     message_t* rpmsg, char* wbuf
 ) {
+    (void)rpmsg;
+    (void)wbuf;
     // [WO] this one can use the generic OK reply
     /*
     if (wbuf == NULL) {
@@ -218,4 +236,109 @@ void updateAmpValuesReply(
     */
 }
 
+
+void queryHostApisReply(
+    message_t* rpmsg, char* wbuf, queryHostApiRep_t* content
+) {
+    if (wbuf == NULL) {
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
+        return;
+    }
+    int offset = 0;
+    int type = rpmsg->type = QUERY_HOST_APIS_REPLY;
+    int length = rpmsg->length = content->hostApiCount * 36;  // 4B id, 32B name
+
+    int htype = htonl(type);
+    int hlength = htonl(length);
+
+    memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+   
+    // [WO] this is kinda dumb...
+    //      but it is true that I is the index of the host API
+    for (int i = 0; i < content->hostApiCount; i++) {
+        const PaHostApiInfo* info = *(content->hostApis + i);
+        int hindex = htonl(i);
+        memcpy(wbuf + offset, &hindex, BA_NUMERIC_FIELD_B); // major assumption is made here regarding host api type fields length
+        offset += BA_NUMERIC_FIELD_B;
+        // so the name is UP TO 32 bytes long
+        // if we just copy 32 bytes from the struct name field, if longer than 32
+        // bytes we get whatever comes after that too (of course)
+        // fprintf(stderr, "%d\n", (int)strlen(info->name));
+        memcpy(wbuf + offset, info->name,
+            min(strlen(info->name) + 1, BA_SMALL_STR_FIELD_B)); // copy the 32 bytes of the name
+        offset += BA_SMALL_STR_FIELD_B;
+    }
+}
+
+
+void queryDevicesReply(
+    message_t* rpmsg, char* wbuf, queryDeviceRep_t* content
+) {
+    if (wbuf == NULL) {
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
+        return;
+    }
+    int offset = 0;
+    int type = rpmsg->type = QUERY_DEVICES_REPLY;
+    // 4B idx, 32B name, 4B max in channel, 4B max out channel, 4B default sample rate
+    int length = rpmsg->length = content->deviceCount * 48;
+
+    int htype = htonl(type);
+    int hlength = htonl(length);
+
+    memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+
+    for (int i = 0; i < content->deviceCount; i++) {
+        const PaDeviceInfo* info = *(content->devices + i);
+        int deviceGlobalIdx = *(content->deviceIdxes + i);
+
+        int hdeviceGlobalIdx = htonl(deviceGlobalIdx);
+        memcpy(wbuf + offset, &hdeviceGlobalIdx, BA_NUMERIC_FIELD_B);
+        offset += BA_NUMERIC_FIELD_B;
+
+        memcpy(wbuf + offset, info->name,
+            min(strlen(info->name) + 1, BA_SMALL_STR_FIELD_B));
+        offset += BA_SMALL_STR_FIELD_B;
+
+        int hdeviceMaxICh = htonl(info->maxInputChannels);
+        memcpy(wbuf + offset, &hdeviceMaxICh, BA_NUMERIC_FIELD_B);
+        offset += BA_NUMERIC_FIELD_B;
+
+        int hdeviceMaxOCh = htonl(info->maxOutputChannels);
+        memcpy(wbuf + offset, &hdeviceMaxOCh, BA_NUMERIC_FIELD_B);
+        offset += BA_NUMERIC_FIELD_B;
+
+        long long tmp = 0;
+        memcpy(&tmp, &(info->defaultSampleRate))
+    }
+}
+
+void queryDevicesBadReply(
+    message_t* rpmsg, char* wbuf
+) {
+    if (wbuf == NULL) {
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
+        return;
+    }
+    int offset = 0;
+    int type = rpmsg->type = QUERY_DEVICES_REPLY;
+    int length = rpmsg->length = 4;
+    int code = 1;
+
+    int htype = htonl(type);
+    int hlength = htonl(length);
+    int hcode = htonl(code);
+
+    memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hcode, BA_NUMERIC_FIELD_B);
+}
 

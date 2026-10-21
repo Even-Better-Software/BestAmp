@@ -205,7 +205,7 @@ Intention of this message: Let a client determine, for a specific host API, whic
 
 The request shall be of the following byte-structure:
 ```
-0x00000005  0x00000001
+0x00000005  0x00000004
 type, 4B    content length, 4B
 
 0xFFFFFFFF
@@ -223,18 +223,18 @@ type (1005), 4B  content length (variable), 4B
 0xFFFFFFFF   0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 dev idx, 4B  dev human name, 32B
 
-0xFFFFFFFF   0xFFFFFFFF    0xFFFFFFFF    0xFFFFFFFF
-in ch n, 4B  out ch n, 4B  sample r, 4B  sample f, 4B
+0xFFFFFFFF   0xFFFFFFFF    0xFFFFFFFF
+in ch n, 4B  out ch n, 4B  sample r, 4B
 ```
-Each device occupies 36B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
+Each device occupies 48B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
 
-> Successful replies for this message will be of a variable length, indicated by the header content length value. Content length will be 36 * device count B.
+> Successful replies for this message will be of a variable length, indicated by the header content length value. Content length will be 48 * device count B.
 
 > Those familiar with PortAudio may wonder if this device idx is host specific or system wide. Its the system wide device idx, most PortAudio calls rely on the system device idx so that is what is returned by this message.
 
 *on failure*
 ```
-0x000003ED       0x00000001
+0x000003ED       0x00000004
 type (1005), 4B  content length, 4B
 
 0x00000001

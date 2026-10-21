@@ -10,6 +10,9 @@
 #define true (1)
 #define false (0)
 
+// #define max(m,n) ((m)>(n)?(m):(n))
+// #define min(m,n) ((m)<(n)?(m):(n))
+
 #define BA_INFO    "\e[32m[INFO]\e[0m "
 #define BA_ERROR   "\e[31m[ERROR]\e[0m "
 #define BA_UNIMPLEMENTED "\e[33m[UNIMPLEMENTED]\e[0m"
