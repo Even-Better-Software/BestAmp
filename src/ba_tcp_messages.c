@@ -204,3 +204,18 @@ void updatePreferencesReply(
 }
 
 
+void updateAmpValuesReply(
+    message_t* rpmsg, char* wbuf
+) {
+    // [WO] this one can use the generic OK reply
+    /*
+    if (wbuf == NULL) {
+        fprintf(stderr, BA_WRITE_BUFFER_NULL);
+        return;
+    }
+    int type = rpmsg->type = UPDATE_AMP_VALS_REPLY;
+    int length = rpmsg->length = 
+    */
+}
+
+

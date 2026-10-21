@@ -22,8 +22,8 @@ Container for application state.
         should be a pointer to `baPrefs_t`
 */
 typedef struct BA_APP_INFO {
-    ampValues_t ampValues;     // [WO] why pointer?
-    baPrefs_t baPrefs;         // [WO] why pointer?
+    ampValues_t ampValues;
+    baPrefs_t baPrefs;
     PaStream* stream;
     int streamOpen;
     int streamRunning;

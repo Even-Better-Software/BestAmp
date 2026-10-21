@@ -85,6 +85,7 @@ void genericOkReply(message_t* rpmsg, char* wbuf);
 
 
 void updatePreferencesReply(message_t* rpmsg, char* wbuf, updatePrefsRep_t* content);
+void updateAmpValuesReply(message_t* rpmsg, char* wbuf);
 
 
 #endif

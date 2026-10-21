@@ -1,5 +1,6 @@
 #include "ba_tcp.h"
 #include "ba_tcp_messages.h"
+#include "portaudio.h"
 
 
 char* BA_NO_CONTENT = NULL;
@@ -140,32 +141,48 @@ int processRequest(appInfo_t* app,
                 &avTemp.bqf_treble,
                 (float)avTemp.treble, app->baPrefs.sampleRate);
             
+            // because it is not possible for this to fail
+            // we can send the generic OK reply
+            //      actually I can envision a situation where this does fail
+            //      say that a bad voice value is supplied, we should tell the
+            //      client about this & then use the default voice (voice 0)
             app->ampValues = avTemp;
+            genericOkReply(rmsg, wbuf);
+            return BA_CONTINUE;
 
-            break;
         case QUERY_HOST_APIS:
             fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
             fprintf(stdout, BA_UNIMPLEMENTED);
-            break;
+
+            // ask port audio for the host APIs
+            int hostApiCount = Pa_GetHostApiCount();
+            for (int i = 0; i < hostApiCount; i++) {
+            }
+
+            return BA_CONTINUE;
+
         case QUERY_DEFAULT_HOST_API:
             fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
             fprintf(stdout, BA_UNIMPLEMENTED);
-            break;
+
+            return BA_CONTINUE;
+
         case QUERY_DEVICES_FOR_HOST_API:
             fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
             fprintf(stdout, BA_UNIMPLEMENTED);
-            break;
+
+            return BA_CONTINUE;
+
         case KILL:
-            break;
+
+            return BA_CONTINUE;
         } 
 
     // Not a request message
     } else {
-        fprintf(stderr, "cannot process a message that is not a request (message ID out of request range).\n");
-        status = -1;
+        fprintf(stderr, BA_INVALID_REQUEST_TYPE);
+        return BA_CONTINUE;
     }
-
-    return status;
 }
 
 

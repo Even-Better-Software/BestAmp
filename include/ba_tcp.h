@@ -27,6 +27,8 @@
 #define BA_SOCKET_ERROR BA_ERROR "socket error or unexpected disconnect.\n"
 #define BA_PORTAUDIO_ERROR BA_ERROR " fatal portaudio error\n"
 
+#define BA_INVALID_REQUEST_TYPE \
+    " cannot process request type is invalid.\n"
 #define BA_AWAITING_CLIENT BA_INFO \
     " waiting for client to connect.\n"
 #define BA_REQUEST_RECIEVED BA_INFO \
