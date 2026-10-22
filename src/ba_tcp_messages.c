@@ -247,7 +247,7 @@ void queryHostApisReply(
     }
     int offset = 0;
     int type = rpmsg->type = QUERY_HOST_APIS_REPLY;
-    int length = rpmsg->length = content->hostApiCount * 36;  // 4B id, 32B name
+    int length = rpmsg->length = content->hostApiCount * 44;  // 4B id, 32B name
 
     int htype = htonl(type);
     int hlength = htonl(length);
@@ -261,9 +261,11 @@ void queryHostApisReply(
     //      but it is true that I is the index of the host API
     for (int i = 0; i < content->hostApiCount; i++) {
         const PaHostApiInfo* info = *(content->hostApis + i);
+
         int hindex = htonl(i);
-        memcpy(wbuf + offset, &hindex, BA_NUMERIC_FIELD_B); // major assumption is made here regarding host api type fields length
+        memcpy(wbuf + offset, &hindex, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
+
         // so the name is UP TO 32 bytes long
         // if we just copy 32 bytes from the struct name field, if longer than 32
         // bytes we get whatever comes after that too (of course)
@@ -271,6 +273,14 @@ void queryHostApisReply(
         memcpy(wbuf + offset, info->name,
             min(strlen(info->name) + 1, BA_SMALL_STR_FIELD_B)); // copy the 32 bytes of the name
         offset += BA_SMALL_STR_FIELD_B;
+
+        int hdefaultIDevIdx = htonl(info->defaultInputDevice);
+        memcpy(wbuf + offset, &hdefaultIDevIdx, BA_NUMERIC_FIELD_B);
+        offset += BA_NUMERIC_FIELD_B;
+
+        int hdefaultODevIdx = htonl(info->defaultOutputDevice);
+        memcpy(wbuf + offset, &hdefaultODevIdx, BA_NUMERIC_FIELD_B);
+        offset += BA_NUMERIC_FIELD_B;
     }
 }
 

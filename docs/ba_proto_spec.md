@@ -173,10 +173,13 @@ type (1003), 4B  content length (variable), 4B
 
 0xFFFFFFFF    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 host idx, 4B  host human name, 32B
-```
-Each host occupies 36B, where the first 4B is the host idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
 
-> Replies for this message will be of a variable length, indicated by the header content length value. Content length will be 36 * host count B.
+0xFFFFFFFF             0xFFFFFFFF
+default i dev idx, 4B  default o dev idx, 4B
+```
+Each host occupies 44B, where the first 4B is the host idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
+
+> Replies for this message will be of a variable length, indicated by the header content length value. Content length will be 44 * host count B.
 
 #### Query Default Host API
 Intention of this message: Let a client determine what the default Host API / Device & other preference values should be at the time of its startup.
@@ -189,16 +192,20 @@ type, 4B    content length, 4B
 
 The reply shall be of the following byte-structure:
 ```
-0x000003EC       0x00000024
+0x000003EB       0x0000002C
 type (1004), 4B  content length, 4B
 
 0xFFFFFFFF    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 host idx, 4B  host human name, 32B
+
+0xFFFFFFFF             0xFFFFFFFF
+default i dev idx, 4B  default o dev idx, 4B
 ```
+This shall be a special case of the query host API which returns the systems default host API.
 
 One host, first 4B is host idx, type `int`, and 32 proceeding B are human name, type `char` (ASCII).
 
-> It is debatable if this should even be its own reply type or a special case of `1003` that just returns w/ a content length of 36B.
+> It is debatable if this should even be its own reply type or a special case of `1003` that just returns w/ a content length of 44B.
 
 #### Query Devices for Host API
 Intention of this message: Let a client determine, for a specific host API, which devices are available.

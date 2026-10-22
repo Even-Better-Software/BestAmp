@@ -182,7 +182,7 @@ int processRequest(appInfo_t* app,
             //          (double it until some max)
             //      figure out the maximum number of host APIs
             //          (no idea what this is)
-            replySizeEstimate = ((hostApiCount * (36)) + 8); // 4B id + 32B name 
+            replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
             fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
             if (replySizeEstimate >= BA_BUFLEN) {
                 fprintf(stderr, "message overflow risk\n");
@@ -233,9 +233,10 @@ int processRequest(appInfo_t* app,
                 const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
                 *(reply.deviceIdxes + i)    = deviceIdx;
                 *(reply.devices + i)        = device;
-
+                /*
                 fprintf(stderr, "host device idx: %d, global device idx: %d\n",
                     i, deviceIdx);
+                */
             }
             // 4 32 4 4 8 = 52 bytes per device
             // we should probably check the buffer length here & scale it if
