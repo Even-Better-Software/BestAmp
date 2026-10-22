@@ -17,7 +17,8 @@
 #define BA_DOUBLE_FIELD_B       (8)
 #define BA_SMALL_STR_FIELD_B    (32)
 
-#define BA_WRITE_BUFFER_NULL "failed to write reply, write buffer is null\n"
+#define BA_WRITE_BUFFER_NULL \
+    "failed to write reply, write buffer is null\n"
 
 
 typedef enum BA_MESSAGE_TYPES {

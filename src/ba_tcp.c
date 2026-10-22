@@ -195,8 +195,29 @@ int processRequest(appInfo_t* app,
 
         }
         case QUERY_DEFAULT_HOST_API: {
+            int hostApiCount = 1;
+            queryHostApiRep_t reply = { 0 };
+
             fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
-            fprintf(stderr, BA_UNIMPLEMENTED);
+
+            // ask port audio for the default host API
+            //      if the default host API cannot be queried this is a fatal case
+            PaHostApiIndex hostApiIndex = Pa_GetDefaultHostApi();
+            if (hostApiIndex < 0) {
+                fprintf(stderr, BA_PORTAUDIO_ERROR);
+                return BA_ERROR_FATAL;
+            }
+            
+            // fprintf(stderr, "%d host apis\n", hostApiCount);
+            const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+                calloc(hostApiCount, sizeof(PaHostApiIndex*));
+            const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(hostApiIndex);
+            *(hostApis + 0) = hinfo;
+            reply.hostApiCount = hostApiCount;
+            reply.hostApis = hostApis;
+
+            queryHostApisReply(rmsg, wbuf, &reply);
+            free(hostApis);
 
             return BA_CONTINUE;
 

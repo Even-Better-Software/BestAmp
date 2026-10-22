@@ -52,6 +52,7 @@
 #define BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED BA_INFO \
     " query host API devices msg.\n"
 
+
 #define BA_MESSAGE_TYPE "%d"
 
 #define BA_CONTINUE     (0)

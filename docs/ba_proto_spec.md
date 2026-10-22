@@ -201,7 +201,7 @@ host idx, 4B  host human name, 32B
 0xFFFFFFFF             0xFFFFFFFF
 default i dev idx, 4B  default o dev idx, 4B
 ```
-This shall be a special case of the query host API which returns the systems default host API.
+This reply shall be a special case of the query host API which returns the systems default host API.
 
 One host, first 4B is host idx, type `int`, and 32 proceeding B are human name, type `char` (ASCII).
 
