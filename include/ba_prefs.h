@@ -16,7 +16,7 @@ typedef struct BA_PREFS {
     int inChanneln;
     int outChanneln;
     int framesPerBuffer;
-    float sampleRate;
+    double sampleRate;
     long sampleFormat;  // I would almost like to be able to cast to the thing at this
     PaHostApiInfo* hostApi;
     PaDeviceInfo* outDev;

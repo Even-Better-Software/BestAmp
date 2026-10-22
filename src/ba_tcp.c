@@ -34,8 +34,7 @@ void cleanupTcpState(tcpState_t* tcp)
 
 int processRequest(appInfo_t* app,
     message_t* msg, message_t* rmsg, char* rbuf, char* wbuf
-)
-{
+) {
     PaError err;
 
     // A valid request message
@@ -94,10 +93,10 @@ int processRequest(appInfo_t* app,
             // Initial biquad calculation
             biQuadFilter_lowShelf(
                 &app->ampValues.bqf_bass,
-                (float)app->ampValues.bass, pTemp.sampleRate);
+                (float)app->ampValues.bass, (float)app->baPrefs.sampleRate);
             biQuadFilter_highShelf(
                 &app->ampValues.bqf_treble,
-                (float)app->ampValues.treble, pTemp.sampleRate);
+                (float)app->ampValues.treble, (float)app->baPrefs.sampleRate);
 
             // Start the portaudio stream
             err = Pa_OpenStream(  &app->stream,
@@ -110,13 +109,16 @@ int processRequest(appInfo_t* app,
                                 app );
             if (err != paNoError) {
                 printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
-                return BA_ERROR_FATAL;
+                reply.code = 1;
+                updatePreferencesReply(rmsg, wbuf, &reply);
+                return BA_CONTINUE;
             }
             app->streamOpen = 1;
             err = Pa_StartStream(app->stream);
             if (err != paNoError) {
-                printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(err));
-                return BA_ERROR_FATAL;
+                reply.code = 1;
+                updatePreferencesReply(rmsg, wbuf, &reply);
+                return BA_CONTINUE;
             }
             app->streamRunning = 1;
    
@@ -136,10 +138,10 @@ int processRequest(appInfo_t* app,
             // recalculate biquads
             biQuadFilter_lowShelf(
                 &avTemp.bqf_bass,
-                (float)avTemp.bass, app->baPrefs.sampleRate);
+                (float)avTemp.bass, (float)app->baPrefs.sampleRate);
             biQuadFilter_highShelf(
                 &avTemp.bqf_treble,
-                (float)avTemp.treble, app->baPrefs.sampleRate);
+                (float)avTemp.treble, (float)app->baPrefs.sampleRate);
             
             // because it is not possible for this to fail
             // we can send the generic OK reply
@@ -225,6 +227,7 @@ int processRequest(appInfo_t* app,
                 calloc(hostApi->deviceCount, sizeof(int));
             reply.devices = (const PaDeviceInfo**)
                 calloc(hostApi->deviceCount, sizeof(PaDeviceInfo*));
+            reply.deviceCount = hostApi->deviceCount;
             for (int i = 0; i < hostApi->deviceCount; i++) {
                 PaDeviceIndex deviceIdx     = Pa_HostApiDeviceIndexToDeviceIndex(hostApiIdx, i);
                 const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
@@ -234,20 +237,21 @@ int processRequest(appInfo_t* app,
                 fprintf(stderr, "host device idx: %d, global device idx: %d\n",
                     i, deviceIdx);
             }
-            // 4 32 4 4 4 4 = 52 bytes per device
+            // 4 32 4 4 8 = 52 bytes per device
             // we should probably check the buffer length here & scale it if
             //      necessary
             //      Im thinking an exponentially bounded growth
             //          (double it until some max)
             //      figure out the maximum number of host APIs
             //          (no idea what this is)
-            replySizeEstimate = ((hostApi->deviceCount * (48)) + 8); // 4B id + 32B name 
+            replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
             fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
             if (replySizeEstimate >= BA_BUFLEN) {
                 fprintf(stderr, "message overflow risk\n");
             } // [WO] for now, this will just whine into stderr
 
-            // Get the devices for the queried host API
+            queryDevicesReply(rmsg, wbuf, &reply);
+
             free(reply.deviceIdxes);
             free(reply.devices);
 

@@ -93,19 +93,19 @@ Intention of this message: update host API, input device, output device, input c
 The request shall be of the following byte-structure:
 ```
 0x00000001  0x00000020
-type, 4B    content length (32B), 4B    
+type, 4B    content length (44B), 4B    
 
 
 0xFFFFFFFF    0xFFFFFFFF  0xFFFFFFFF   0xFFFFFFFF 
 host idx, 4B  in idx, 4B  out idx, 4B  in ch n, 4B
 
-0xFFFFFFFF    0xFFFFFFFF    0xFFFFFFFF    0xFFFFFFFF
-out ch n, 4B  buf size, 4B  sample r, 4B  sample f, 4B
+0xFFFFFFFF    0xFFFFFFFF    0xFFFFFFFFFFFFFFFF  0xFFFFFFFF
+out ch n, 4B  buf size, 4B  sample r, 8B        sample f, 4B
 ```
 
 Where `host idx`, `in idx`, `out idx`, `in ch n`, `out ch n`, `buf size`, and `sample f` are type `int`.
 
-& `sample r` is type `float`.
+& `sample r` is type `double`.
 
 > The aforementioned types are how these bytes are interpreted by BestAmp.
 
@@ -223,12 +223,12 @@ type (1005), 4B  content length (variable), 4B
 0xFFFFFFFF   0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 dev idx, 4B  dev human name, 32B
 
-0xFFFFFFFF   0xFFFFFFFF    0xFFFFFFFF
-in ch n, 4B  out ch n, 4B  sample r, 4B
+0xFFFFFFFF   0xFFFFFFFF    0xFFFFFFFFFFFFFFFF
+in ch n, 4B  out ch n, 4B  sample r, 8B
 ```
-Each device occupies 48B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
+Each device occupies 52B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
 
-> Successful replies for this message will be of a variable length, indicated by the header content length value. Content length will be 48 * device count B.
+> Successful replies for this message will be of a variable length, indicated by the header content length value. Content length will be 52 * device count B.
 
 > Those familiar with PortAudio may wonder if this device idx is host specific or system wide. Its the system wide device idx, most PortAudio calls rely on the system device idx so that is what is returned by this message.
 

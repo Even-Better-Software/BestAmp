@@ -1,4 +1,5 @@
 #include "ba_tcp_messages.h"
+#include <winsock2.h>
 
 
 void printMessage(message_t* msg)
@@ -64,8 +65,8 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
-    if (msg->length != 0x20 /*0x1C*/)
-        fprintf(stderr, "\e[31mupdate prefs content length should be 28 bytes.\e[0m\n");
+    if (msg->length != 0x2C)
+        fprintf(stderr, "\e[31mupdate prefs content length should be 44 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
 
@@ -98,12 +99,12 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
         rbuf + (t_data_off += sizeof(prefs->outChanneln))
     ), sizeof(prefs->framesPerBuffer));
     prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
-  
-    int tmpi;
+ 
+    long long tmpi;
     memcpy(&tmpi, rbuf + (
         t_data_off += sizeof(prefs->framesPerBuffer)
     ), sizeof(tmpi));
-    tmpi = ntohl(tmpi);   // cheat to get the correct byte-ordering
+    tmpi = ntohll(tmpi);   // cheat to get the correct byte-ordering
     memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
      
     fprintf(stdout, BA_INFO " parsed updated prefs\n"); 
@@ -283,8 +284,9 @@ void queryDevicesReply(
     }
     int offset = 0;
     int type = rpmsg->type = QUERY_DEVICES_REPLY;
-    // 4B idx, 32B name, 4B max in channel, 4B max out channel, 4B default sample rate
-    int length = rpmsg->length = content->deviceCount * 48;
+    // 4B idx, 32B name, 4B max in channel, 4B max out channel, 8B default sample rate
+    int length = rpmsg->length = content->deviceCount * 52;
+    // fprintf(stderr, "deviceCount: %d\n", content->deviceCount);
 
     int htype = htonl(type);
     int hlength = htonl(length);
@@ -315,7 +317,10 @@ void queryDevicesReply(
         offset += BA_NUMERIC_FIELD_B;
 
         long long tmp = 0;
-        memcpy(&tmp, &(info->defaultSampleRate))
+        memcpy(&tmp, &(info->defaultSampleRate), BA_DOUBLE_FIELD_B);
+        tmp = htonll(tmp);
+        memcpy(wbuf + offset, &tmp, BA_DOUBLE_FIELD_B);
+        offset += BA_DOUBLE_FIELD_B;
     }
 }
 

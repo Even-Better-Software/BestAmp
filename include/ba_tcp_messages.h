@@ -4,8 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <winsock.h>
-
+#include <winsock2.h>
 
 #include "ba_common.h"
 #include "ba_prefs.h"
@@ -15,6 +14,7 @@
 
 #define BA_HEADER_SIZE_B        (8)
 #define BA_NUMERIC_FIELD_B      (4)
+#define BA_DOUBLE_FIELD_B       (8)
 #define BA_SMALL_STR_FIELD_B    (32)
 
 #define BA_WRITE_BUFFER_NULL "failed to write reply, write buffer is null\n"
