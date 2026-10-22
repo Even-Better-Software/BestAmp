@@ -10,6 +10,9 @@
 #define true (1)
 #define false (0)
 
+// #define max(m,n) ((m)>(n)?(m):(n))
+// #define min(m,n) ((m)<(n)?(m):(n))
+
 #define BA_INFO    "\e[32m[INFO]\e[0m "
 #define BA_ERROR   "\e[31m[ERROR]\e[0m "
 #define BA_UNIMPLEMENTED "\e[33m[UNIMPLEMENTED]\e[0m"
@@ -22,8 +25,8 @@ Container for application state.
         should be a pointer to `baPrefs_t`
 */
 typedef struct BA_APP_INFO {
-    ampValues_t ampValues;     // [WO] why pointer?
-    baPrefs_t baPrefs;         // [WO] why pointer?
+    ampValues_t ampValues;
+    baPrefs_t baPrefs;
     PaStream* stream;
     int streamOpen;
     int streamRunning;

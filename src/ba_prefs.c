@@ -15,7 +15,7 @@ void printBaPrefs(baPrefs_t* prefs)
             "outChanneln: %d, "         \
             "framesPerBuffer: %d, "     \
             "sampleFormat: %ld, "       \
-            "sampleRate: %f, "          \
+            "sampleRate: %lf, "         \
         "}\n",
         prefs->hostApiIdx,
         prefs->inDevIdx,
@@ -38,7 +38,7 @@ void initBaPrefs(baPrefs_t* prefs)
     prefs->outChanneln = -1;
     prefs->framesPerBuffer = -1;
     prefs->sampleFormat = paFloat32;
-    prefs->sampleRate = -1.0f;
+    prefs->sampleRate = -1.0;
     prefs->hostApi = NULL;
     prefs->inDev = prefs->outDev = NULL;
 }

@@ -3,14 +3,21 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <stdio.h>
+#include <string.h>
+#include <portaudio.h>
 
-#include "ba_prefs.h"
+#include "ba_portaudio_helpers.h"
+#include "ba_portaudio_cb.h"
 #include "ba_common.h"
+#include "ba_prefs.h"
+#include "ba_amp.h"
+#include "ba_tcp_messages.h"
 
 
 #define BA_PORT "7080"
 #define BA_PORT_I (7081)
-#define BA_BUFLEN (512)
+#define BA_BUFLEN (4096)
 #define BA_MSG_DELIM "\n"
 
 #define BA_WSA_ERROR BA_ERROR "WSAStartup failed.\n"
@@ -20,6 +27,8 @@
 #define BA_SOCKET_ERROR BA_ERROR "socket error or unexpected disconnect.\n"
 #define BA_PORTAUDIO_ERROR BA_ERROR " fatal portaudio error\n"
 
+#define BA_INVALID_REQUEST_TYPE \
+    " cannot process request type is invalid.\n"
 #define BA_AWAITING_CLIENT BA_INFO \
     " waiting for client to connect.\n"
 #define BA_REQUEST_RECIEVED BA_INFO \
@@ -43,11 +52,13 @@
 #define BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED BA_INFO \
     " query host API devices msg.\n"
 
+
 #define BA_MESSAGE_TYPE "%d"
 
-#define BA_ERROR_FORMAT -1
-#define BA_ERROR_FATAL -2
-#define BA_KILL -3
+#define BA_CONTINUE     (0)
+#define BA_ERROR_FORMAT (-1)
+#define BA_ERROR_FATAL  (-2)
+#define BA_KILL         (-3)
 
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
@@ -56,89 +67,32 @@
 extern char* BA_NO_CONTENT;
 
 
-typedef enum BA_MESSAGE_TYPES {
-    BAD = -1,
-    KILL = 0,               // stop the application
-    UPDATE_PREFS = 1,
-    UPDATE_AMP_VALS,
-    QUERY_HOST_APIS,
-    QUERY_DEFAULT_HOST_API,
-    QUERY_DEVICES_FOR_HOST_API
-} messageType_t;
-
-
-typedef struct BA_MSG {
-    messageType_t type;
-    int length;         // uint32_t (fixed width)
-    int data_off;       // should always be 8 bytes but for future use
-    char* data;         // this is dangerous though because it wont live on the heap
-                        // only for the duration of the socket function call
-                        // however, that should be the duration of the entire program
-                        // so this is probably ok... something to think about
-} message_t;
-
-
-typedef struct BA_UPDATE_PREFS_MSG {
-    int hostIdx, inDevIdx, outDevIdx, inChanneln, outChanneln;
-} updatePrefsMsg_t;     // not actually used (but it might be)
-
-
-typedef struct BA_UPDATE_AMP_VALS_MSG {
-    int gain, bass, treble, power;
-} updateAmpValsMsg_t;   // not actually used (but it might be)
-
-
 typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
-    char*   buffer;
+    int     sts;    // stuff to send
+    char*   rbuffer;
+    char*   wbuffer;
     struct addrinfo*    result;
     struct addrinfo     hints;
 } tcpState_t;
 
-// dont need this anymore
-// messageType_t parseMessageType(char* msg);
-
 
 void initTcpState(tcpState_t* tcp);
+void cleanupTcpState(tcpState_t* tcp);
 
 /**
-Accepts a message byte array (char) & parses into the header struct.
-    [WO] should return some sort of parse code
-    0 -> OK
-    -1 -> parse failed (probably invalid type)
+Process a request, reads from `msg`, replies will be written to `rmsg`.
+    `msg` & `rmsg` must be initialized.
 */
-int parseMessage(message_t* pMsg, char* msg);
-
-/**
-For debugging purposes.
-*/
-void printMessage(message_t* amsg);
-
-void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg);
-void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg);
-
-int processMessage(appInfo_t* app, message_t* msg);
+int processRequest(appInfo_t* app, message_t* msg, message_t* rmsg,
+    char* rbuf, char* wbuf);
 
 /**
 Windows Socket TCP Loop.
 */
 int initWinsock(appInfo_t* app);
-
-
-/**
-BestAmp PortAudio callback definition.
-    [WO] I don't really know where to put this
-*/
-int bestAmpCB(
-    const void* input,
-    void* output,
-    unsigned long framesPerBuffer,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags,
-    void* userData 
-);
 
 #endif
 

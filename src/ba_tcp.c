@@ -1,60 +1,9 @@
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <stdio.h>
-#include <string.h>
-#include <portaudio.h>
-
-#include "ba_amp.h"
-#include "ba_portaudio_helpers.h"
 #include "ba_tcp.h"
-#include "ba_prefs.h"
-#include "ba_common.h"
+#include "ba_tcp_messages.h"
+#include "portaudio.h"
 
 
 char* BA_NO_CONTENT = NULL;
-
-
-// BestAmp PortAudio callback implementation.
-int bestAmpCB(
-    const void* input,
-    void* output,
-    unsigned long framesPerBuffer,
-    const PaStreamCallbackTimeInfo* timeInfo,
-    PaStreamCallbackFlags statusFlags,
-    void* userData 
-)
-{
-    const float* in = (float*)input; // this has to be derived from the chosen buffer format
-    float* out = (float*)output; // this has to be derived from the chosen buffer format
-    // sysInfo_t* sysInfo = (sysInfo_t*)userData;
-    appInfo_t* appInfo = (appInfo_t*)userData;
-    // (void)userData;
-    (void)timeInfo;
-    (void)statusFlags;
-
-    // [WO] todo copy input to output
-    // where 2 is the number of channels
-    float y;
-    for (unsigned int i = 0; i < framesPerBuffer * appInfo->baPrefs.inChanneln; i++)
-    {
-        y = appInfo->ampValues.gain * *in;         // pre-amplification
-
-        y = biQuadFilter_process(
-            &appInfo->ampValues.bqf_bass, y);      // execute bass biQuad filter process
-        y = biQuadFilter_process(
-            &appInfo->ampValues.bqf_treble, y);    // execute treble biQuad filter process
-
-        y = appInfo->ampValues.power * y;          // power-amplification
-
-        *out = y; // write the processed sample to the output buffer
-        
-        // advance pointers 
-        out++;
-        in++;
-    }
-
-    return paContinue;
-}
 
 
 void initTcpState(tcpState_t* tcp)
@@ -62,6 +11,9 @@ void initTcpState(tcpState_t* tcp)
     tcp->sSocket = INVALID_SOCKET;
     tcp->cSocket = INVALID_SOCKET;
     tcp->result = NULL;
+    tcp->rbuffer = NULL;
+    tcp->wbuffer = NULL;
+    tcp->sts    = 0;
 
     ZeroMemory(&tcp->hints, sizeof (tcp->hints));
     tcp->hints.ai_family     = AF_INET;
@@ -70,281 +22,282 @@ void initTcpState(tcpState_t* tcp)
     tcp->hints.ai_flags      = AI_PASSIVE;
 }
 
-
-int parseMessage(message_t* pMsg, char* msg)
+void cleanupTcpState(tcpState_t* tcp)
 {
-    // Byte 0 -> message type
-    //      store in `type`
-    // Byte 1 -> length of the message
-    //      store in `length`
-    // Byte 2 -> from this point onwards, its message specific content
-    //      advance the pointer by the `length` & then
-    //      assign to the `data` field of the `message_t` struct
-
-    // as per our protocol this never changes literally interpret this as an int
-    int typeByte = 0;
-    memcpy(&typeByte, msg, sizeof(typeByte));
-    typeByte = ntohl(typeByte);
-    // as per out protocol this never changes literally interpret this as an int
-    int lengthByte = 0;
-    memcpy(&lengthByte, (msg + sizeof(typeByte)), sizeof(lengthByte));
-    lengthByte = ntohl(lengthByte);
-
-    switch (typeByte) {
-    case KILL:
-        pMsg->type = KILL;
-        pMsg->length = 0;
-        pMsg->data = BA_NO_CONTENT; // can skip the other stuff
-        return 0;
-    case UPDATE_PREFS:
-        pMsg->type = UPDATE_PREFS; 
-        break;
-    case UPDATE_AMP_VALS:
-        pMsg->type = UPDATE_AMP_VALS;
-        break;
-    case QUERY_HOST_APIS:
-        pMsg->type = QUERY_HOST_APIS;
-        break;
-    case QUERY_DEFAULT_HOST_API:
-        pMsg->type = QUERY_DEFAULT_HOST_API;
-        break;
-    case QUERY_DEVICES_FOR_HOST_API:
-        pMsg->type = QUERY_DEVICES_FOR_HOST_API;
-        break;
-    default:
-        return -1;
-    }
-     
-    if (lengthByte == 0) {
-        pMsg->length = 0;
-        pMsg->data = BA_NO_CONTENT; // set this explicitly (this is just NULL)
-    } else if (lengthByte > 0) {
-        // this many bytes should be in the message
-        pMsg->length = lengthByte;
-        // do I need to advance twice or just once cause I already advanced?
-        pMsg->data = msg;
-        pMsg->data_off = sizeof(typeByte) + sizeof(lengthByte);
-    }
-
-    return 0;
+    if (tcp->rbuffer != NULL)
+        free(tcp->rbuffer);
+    if (tcp->wbuffer != NULL)
+        free(tcp->wbuffer);
 }
 
 
-void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg)
-{
-    if (msg->length != 0x1C)
-        fprintf(stderr, "\e[31update prefs content length should be 28 bytes.\e[0m\n");
 
-    int t_data_off = msg->data_off;
-
-    memcpy(&prefs->hostApiIdx, (
-        msg->data + t_data_off
-    ), sizeof(prefs->hostApiIdx));
-    prefs->hostApiIdx = ntohl(prefs->hostApiIdx);
-
-    memcpy(&prefs->inDevIdx, (
-        msg->data + (t_data_off += sizeof(prefs->hostApiIdx))
-    ), sizeof(prefs->inDevIdx));
-    prefs->inDevIdx = ntohl(prefs->inDevIdx);
-
-    memcpy(&prefs->outDevIdx, (
-        msg->data + (t_data_off += sizeof(prefs->inDevIdx))
-    ), sizeof(prefs->outDevIdx));
-    prefs->outDevIdx = ntohl(prefs->outDevIdx);
-
-    memcpy(&prefs->inChanneln, (
-        msg->data + (t_data_off += sizeof(prefs->outDevIdx))
-    ), sizeof(prefs->inChanneln));
-    prefs->inChanneln = ntohl(prefs->inChanneln);
-
-    memcpy(&prefs->outChanneln, (
-        msg->data + (t_data_off += sizeof(prefs->inChanneln))
-    ), sizeof(prefs->outChanneln));
-    prefs->outChanneln = ntohl(prefs->outChanneln);
-
-    memcpy(&prefs->framesPerBuffer, (
-        msg->data + (t_data_off += sizeof(prefs->outChanneln))
-    ), sizeof(prefs->framesPerBuffer));
-    prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
-  
-    int tmpi;
-    memcpy(&tmpi, msg->data + (
-        t_data_off += sizeof(prefs->framesPerBuffer)
-    ), sizeof(tmpi));
-    tmpi = ntohl(tmpi);   // cheat to get the correct byte-ordering
-    memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
-     
-    fprintf(stdout, BA_INFO " parsed updated prefs "); 
-}
-
-
-void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg)
-{
-    if (msg->length != 0x10)
-        fprintf(stderr, "\e[31mupdate amp values content length should be 16 bytes.\e[0m\n");
-
-    int t_data_off = msg->data_off;
-
-    memcpy(&ampValues->gain, (
-        msg->data + t_data_off
-    ), sizeof(ampValues->gain));
-    ampValues->gain = ntohl(ampValues->gain);
-
-    memcpy(&ampValues->bass, (
-        msg->data + (t_data_off += sizeof(ampValues->gain))
-    ), sizeof(ampValues->bass));
-    ampValues->bass = ntohl(ampValues->bass);
-
-    memcpy(&ampValues->treble, (
-        msg->data + (t_data_off += sizeof(ampValues->bass))
-    ), sizeof(ampValues->treble));
-    ampValues->treble = ntohl(ampValues->treble);
-
-    memcpy(&ampValues->power, (
-        msg->data + (t_data_off += sizeof(ampValues->treble))
-    ), sizeof(ampValues->power));
-    ampValues->power = ntohl(ampValues->power);
- 
-    fprintf(stdout, BA_INFO " parsed updated amp values "); 
-}
-
-
-void printMessage(message_t* msg)
-{
-    printf("type: %d, length: %d\n", msg->type, msg->length);
-}
-
-
-int processMessage(appInfo_t* app, message_t* msg)
-{
+int processRequest(appInfo_t* app,
+    message_t* msg, message_t* rmsg, char* rbuf, char* wbuf
+) {
     PaError err;
-    int status = 0;
-    
-    // [WO] basically copy all of the setup code here. 
-    // IF Request Type is 1
-    //      Parse the BA_UPDATE_PREFS_MSG -> set prefs accordingly
-    //          Set using coalesce function (so defaults can be used)
-    //      Setup the portaudio stream w/ the values from the request
-    //      Session State -> stream running [WO] ignore this
-    // IF Request Type is 2
-    //      Set amp values
 
-    switch (msg->type) {
-    case BAD:
-        fprintf(stdout, BA_BAD_MESSAGE_RECIEVED);
-        return BA_ERROR_FORMAT;
-    case UPDATE_PREFS:
-        fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
-        // Parse prefs from message
-        baPrefs_t pTemp;
-        initBaPrefs(&pTemp);
-        parsePrefsFromMsg(&pTemp, msg);
-        printBaPrefs(&pTemp);
-        coalesceBaPrefsToPaDefaults(&pTemp);
-        printBaPrefs(&pTemp);
+    // A valid request message
+    // [WO] longterm -> move these to message handler functions
+    //      move the implementations for each message type to their own function
+    if (msg->type >= KILL && msg->type <= QUERY_DEVICES_FOR_HOST_API) {
+        switch (msg->type) {
+        case UPDATE_PREFS: {
+            fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
+            // Parse prefs from message
+            baPrefs_t pTemp;
+            updatePrefsRep_t reply = {0};
+            initBaPrefs(&pTemp);
+            parsePrefsFromMsg(&pTemp, msg, rbuf);
+            printBaPrefs(&pTemp);
+            coalesceBaPrefsToPaDefaults(&pTemp);
+            printBaPrefs(&pTemp);
 
-        if (app->streamRunning)
-            Pa_StopStream(app->stream);         // [WO] errors unhandled
-        if (app->streamOpen)
-            Pa_CloseStream(app->stream);        // [WO] errors unhandled
+            if (app->streamRunning)
+                Pa_StopStream(app->stream);         // [WO] errors unhandled
+            if (app->streamOpen)
+                Pa_CloseStream(app->stream);        // [WO] errors unhandled
 
-        // Create Input/Output stream parameters
-        PaStreamParameters iStreamParams, oStreamParams;
+            // Create Input/Output stream parameters
+            PaStreamParameters iStreamParams, oStreamParams;
 
-        iStreamParams.device = pTemp.inDevIdx;
-        iStreamParams.channelCount = pTemp.inChanneln;
-        iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
-        iStreamParams.sampleFormat = pTemp.sampleFormat;
-        iStreamParams.hostApiSpecificStreamInfo = NULL;
+            iStreamParams.device = pTemp.inDevIdx;
+            iStreamParams.channelCount = pTemp.inChanneln;
+            iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
+            iStreamParams.sampleFormat = pTemp.sampleFormat;
+            iStreamParams.hostApiSpecificStreamInfo = NULL;
 
-        oStreamParams.device = pTemp.outDevIdx;
-        oStreamParams.channelCount = pTemp.outChanneln;
-        oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
-        oStreamParams.sampleFormat = pTemp.sampleFormat;
-        oStreamParams.hostApiSpecificStreamInfo = NULL;
+            oStreamParams.device = pTemp.outDevIdx;
+            oStreamParams.channelCount = pTemp.outChanneln;
+            oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
+            oStreamParams.sampleFormat = pTemp.sampleFormat;
+            oStreamParams.hostApiSpecificStreamInfo = NULL;
 
-        // Is format supported test 
-        // Pa_IsFormatSupported
-        err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
-        if (err != paNoError) {
-            printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
-            return BA_ERROR_FORMAT;
+            // Is format supported test 
+            // Pa_IsFormatSupported
+            // if the format it not supported we write a bad message reply
+            //      we should not write a bad message reply, rather the reply as per the spec
+            // return from this method w/ BA_CONTINUE (since the server is fine, basically we are dropping this request)
+            // send the update prefs bad preferences reply
+            err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
+            if (err != paNoError) {
+                printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
+                // badMessageReply(rmsg, wbuf);
+                reply.code = 1;
+                updatePreferencesReply(rmsg, wbuf, &reply);
+                return BA_CONTINUE;
+            }
+            // Format supported, so pTemp becomes app->prefs
+            app->baPrefs = pTemp;
+            
+            // Initial biquad calculation
+            biQuadFilter_lowShelf(
+                &app->ampValues.bqf_bass,
+                (float)app->ampValues.bass, (float)app->baPrefs.sampleRate);
+            biQuadFilter_highShelf(
+                &app->ampValues.bqf_treble,
+                (float)app->ampValues.treble, (float)app->baPrefs.sampleRate);
+
+            // Start the portaudio stream
+            err = Pa_OpenStream(  &app->stream,
+                                &iStreamParams,
+                                &oStreamParams,
+                                app->baPrefs.sampleRate,
+                                app->baPrefs.framesPerBuffer,
+                                0,
+                                bestAmpCB,
+                                app );
+            if (err != paNoError) {
+                printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
+                reply.code = 1;
+                updatePreferencesReply(rmsg, wbuf, &reply);
+                return BA_CONTINUE;
+            }
+            app->streamOpen = 1;
+            err = Pa_StartStream(app->stream);
+            if (err != paNoError) {
+                reply.code = 1;
+                updatePreferencesReply(rmsg, wbuf, &reply);
+                return BA_CONTINUE;
+            }
+            app->streamRunning = 1;
+   
+            // Send the update prefs OK reply
+            reply.code = 0;
+            updatePreferencesReply(rmsg, wbuf, &reply);
+            return BA_CONTINUE;
+
         }
-        // Format supported, so pTemp becomes app->prefs
-        app->baPrefs = pTemp;
-        
-        // Initial biquad calculation
-        biQuadFilter_lowShelf(
-            &app->ampValues.bqf_bass,
-            (float)app->ampValues.bass, pTemp.sampleRate);
-        biQuadFilter_highShelf(
-            &app->ampValues.bqf_treble,
-            (float)app->ampValues.treble, pTemp.sampleRate);
+        case UPDATE_AMP_VALS: {
+            fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
+            ampValues_t avTemp;
+            initAmpValues(&avTemp);
+            parseAmpValuesFromMsg(&avTemp, msg, rbuf);
+            printAmpValues(&avTemp);
 
-        err = Pa_OpenStream(  &app->stream,
-                            &iStreamParams,
-                            &oStreamParams,
-                            app->baPrefs.sampleRate,
-                            app->baPrefs.framesPerBuffer,
-                            0,
-                            bestAmpCB,
-                            app );
-        if (err != paNoError) {
-            printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
-            return BA_ERROR_FATAL;
+            // recalculate biquads
+            biQuadFilter_lowShelf(
+                &avTemp.bqf_bass,
+                (float)avTemp.bass, (float)app->baPrefs.sampleRate);
+            biQuadFilter_highShelf(
+                &avTemp.bqf_treble,
+                (float)avTemp.treble, (float)app->baPrefs.sampleRate);
+            
+            // because it is not possible for this to fail
+            // we can send the generic OK reply
+            //      actually I can envision a situation where this does fail
+            //      say that a bad voice value is supplied, we should tell the
+            //      client about this & then use the default voice (voice 0)
+            app->ampValues = avTemp;
+            genericOkReply(rmsg, wbuf);
+            return BA_CONTINUE;
+
         }
-        app->streamOpen = 1;
-        err = Pa_StartStream(app->stream);
-        if (err != paNoError) {
-            printf("\e[31mStart stream error\e[0m: %s\n", Pa_GetErrorText(err));
-            return BA_ERROR_FATAL;
+        case QUERY_HOST_APIS: {
+            // [WO] BA_BUFLEN overflow risk (variable length)
+
+            int replySizeEstimate = 0;
+            queryHostApiRep_t reply = { 0 };
+
+            fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
+            // fprintf(stdout, BA_UNIMPLEMENTED);
+
+            // ask port audio for the host APIs
+            // just pass this to the message processor basically
+            // I need memory, I need N * sizeof() to store const pointers to hostapi info structs
+            PaHostApiIndex hostApiCount = Pa_GetHostApiCount();
+            fprintf(stderr, "%d host apis\n", hostApiCount);
+            const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+                calloc(hostApiCount, sizeof(PaHostApiIndex*));
+            for (int i = 0; i < hostApiCount; i++) {
+                const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(i);
+                *(hostApis + i) = hinfo;
+            }
+            reply.hostApiCount = hostApiCount;
+            reply.hostApis = hostApis;
+
+            // we should probably check the buffer length here & scale it if
+            //      necessary
+            //      Im thinking an exponentially bounded growth
+            //          (double it until some max)
+            //      figure out the maximum number of host APIs
+            //          (no idea what this is)
+            replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
+            fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+            if (replySizeEstimate >= BA_BUFLEN) {
+                fprintf(stderr, "message overflow risk\n");
+            } // [WO] for now, this will just whine into stderr
+
+            queryHostApisReply(rmsg, wbuf, &reply);
+            free(hostApis);
+
+            return BA_CONTINUE;
+
         }
-        app->streamRunning = 1;
-        break;
-    case UPDATE_AMP_VALS:
-        fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
-        ampValues_t avTemp;
-        initAmpValues(&avTemp);
-        parseAmpValuesFromMsg(&avTemp, msg);
-        printAmpValues(&avTemp);
+        case QUERY_DEFAULT_HOST_API: {
+            int hostApiCount = 1;
+            queryHostApiRep_t reply = { 0 };
 
-        // recalculate biquads
-        biQuadFilter_lowShelf(
-            &avTemp.bqf_bass,
-            (float)avTemp.bass, app->baPrefs.sampleRate);
-        biQuadFilter_highShelf(
-            &avTemp.bqf_treble,
-            (float)avTemp.treble, app->baPrefs.sampleRate);
-        
-        // [WO] Should probably check that the stuff here is -1
-        // so keep old value if new value = -1
-        app->ampValues = avTemp;
+            fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
 
-        break;
-    case QUERY_HOST_APIS:
-        fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
-        fprintf(stdout, BA_UNIMPLEMENTED);
-        break;
-    case QUERY_DEFAULT_HOST_API:
-        fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
-        fprintf(stdout, BA_UNIMPLEMENTED);
-        break;
-    case QUERY_DEVICES_FOR_HOST_API:
-        fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
-        fprintf(stdout, BA_UNIMPLEMENTED);
-        break;
-    case KILL:
-        status = 0;
-        return BA_KILL;
-    } 
+            // ask port audio for the default host API
+            //      if the default host API cannot be queried this is a fatal case
+            PaHostApiIndex hostApiIndex = Pa_GetDefaultHostApi();
+            if (hostApiIndex < 0) {
+                fprintf(stderr, BA_PORTAUDIO_ERROR);
+                return BA_ERROR_FATAL;
+            }
+            
+            // fprintf(stderr, "%d host apis\n", hostApiCount);
+            const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+                calloc(hostApiCount, sizeof(PaHostApiIndex*));
+            const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(hostApiIndex);
+            *(hostApis + 0) = hinfo;
+            reply.hostApiCount = hostApiCount;
+            reply.hostApis = hostApis;
 
-    return status;
+            queryHostApisReply(rmsg, wbuf, &reply);
+            free(hostApis);
+
+            return BA_CONTINUE;
+
+        }
+        case QUERY_DEVICES_FOR_HOST_API: {
+            // [WO] BA_BUFLEN overflow risk (variable length)
+
+            int hostApiIdx = 0;
+            int replySizeEstimate = 0;
+            queryDeviceRep_t reply = {0};
+
+            parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
+
+            fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
+            fprintf(stderr, "query devices for: %d\n", hostApiIdx);
+
+            // Get the Host API Info Struct
+            //      if this fails, then the index supplied is invalid so
+            //      we send the bad reply back to the client
+            const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
+            if (hostApi == NULL) {
+                fprintf(stderr, "\e[31mgiven host api index returned NULL hostapi info struct must be invalid.\e[0m\n");
+                queryDevicesBadReply(rmsg, wbuf);
+                return BA_CONTINUE;
+            }
+            reply.hostApiIdx = hostApiIdx;
+            reply.deviceIdxes = (int*)
+                calloc(hostApi->deviceCount, sizeof(int));
+            reply.devices = (const PaDeviceInfo**)
+                calloc(hostApi->deviceCount, sizeof(PaDeviceInfo*));
+            reply.deviceCount = hostApi->deviceCount;
+            for (int i = 0; i < hostApi->deviceCount; i++) {
+                PaDeviceIndex deviceIdx     = Pa_HostApiDeviceIndexToDeviceIndex(hostApiIdx, i);
+                const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
+                *(reply.deviceIdxes + i)    = deviceIdx;
+                *(reply.devices + i)        = device;
+                /*
+                fprintf(stderr, "host device idx: %d, global device idx: %d\n",
+                    i, deviceIdx);
+                */
+            }
+            // 4 32 4 4 8 = 52 bytes per device
+            // we should probably check the buffer length here & scale it if
+            //      necessary
+            //      Im thinking an exponentially bounded growth
+            //          (double it until some max)
+            //      figure out the maximum number of host APIs
+            //          (no idea what this is)
+            replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
+            fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+            if (replySizeEstimate >= BA_BUFLEN) {
+                fprintf(stderr, "message overflow risk\n");
+            } // [WO] for now, this will just whine into stderr
+
+            queryDevicesReply(rmsg, wbuf, &reply);
+
+            free(reply.deviceIdxes);
+            free(reply.devices);
+
+            return BA_CONTINUE;
+        }
+        case KILL: {
+
+            return BA_CONTINUE;
+
+        }} 
+    // Not a request message
+    } else {
+        fprintf(stderr, BA_INVALID_REQUEST_TYPE);
+        return BA_CONTINUE;
+    }
+    return BA_CONTINUE;
 }
 
 
 int initWinsock(appInfo_t* app) {
     tcpState_t tcp = { 0 };
     initTcpState(&tcp);
+
+    int exitCode = 0;
 
     // Initialize Winsock
     int status = WSAStartup(MAKEWORD(2,2), &tcp.wsaData); // need to manually ensure version 2.2 for some reason
@@ -400,56 +353,88 @@ int initWinsock(appInfo_t* app) {
     // Receive until the peer shuts down the connection
     // [WO] clear & allocate this buffer
     // so I know that the memory is zeroed
-    tcp.buffer = NULL;
-    tcp.buffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+    tcp.rbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+    tcp.wbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+
+    message_t reqMsg = { 0 };
+    message_t repMsg = { 0 };
+
     do {
-        memset(tcp.buffer, 0, BA_BUFLEN);       // zero memory per iteration
-        status = recv(tcp.cSocket, tcp.buffer, BA_BUFLEN, 0);
+        memset(tcp.rbuffer, 0, BA_BUFLEN);
+        memset(tcp.wbuffer, 0, BA_BUFLEN);
+
+        reqMsg = (message_t){ 0 };
+        repMsg = (message_t){ 0 };
+
+        // [WO] TODO safe read
+        status = recv(tcp.cSocket, tcp.rbuffer, BA_BUFLEN, 0);
+
         if (status > 0) {
-            // printf("Bytes recevied: %d\n", status);
             // parse message
-            message_t msg = { 0 };
-            status = parseMessage(&msg, tcp.buffer);
-            printMessage(&msg);
-            // if the message is kill, abort the loop (dont need to process anything else)
-            // if the message is bad (-1), next iteration of the loop (drop it)
-            //      invalid message reply
-
-            // if the message is complex, route to the message processor?
-            //      or route all things to the message processor?
-            // if the message is valid, delegate to message type handler
-            //      if handler success, OK reply or handler OK reply message & data
-            //      if handler fails, BAD reply or handler BAD reply
-            status = processMessage(app, &msg);
-
-            if (status == BA_ERROR_FORMAT) {
+            //      parse returns n < 0 it fails write bad message reply
+            status = parseMessage(&reqMsg, tcp.rbuffer);
+            if (status < 0) {
                 printf(BA_BAD_MESSAGE_RECIEVED);
-                continue;
-            } else if (status == BA_ERROR_FATAL) {
-                printf(BA_PORTAUDIO_ERROR);
-                break;
-            } else if (status == BA_KILL) {
-                printf("Connection closing...\n");
-                break;
+                badMessageReply(&repMsg, tcp.wbuffer);
+                tcp.sts = 1;
+                goto cleanup;
             }
+            printMessage(&reqMsg);
+
+            // process request / message (delegates to message handlers)
+            // process message paths will write specific replies to `repMsg`
+            //      where this is the accounting for the message
+            // and into `tcp.wbuffer`
+            //      where this is the data for the message
+            status = processRequest(app, &reqMsg, &repMsg,
+                tcp.rbuffer, tcp.wbuffer);
+            if (status == BA_ERROR_FATAL) {
+                fprintf(stderr, BA_PORTAUDIO_ERROR);
+                badMessageReply(&repMsg, tcp.wbuffer);
+                tcp.sts = 1;
+                exitCode = 1;
+                goto cleanup;
+            }
+            printMessage(&repMsg);
+
+            // send the reply
+            //      we don't explicity check this but this is the BA_CONTINUE path
+            status = send(tcp.cSocket, tcp.wbuffer,
+                repMsg.length + BA_HEADER_SIZE_B, 0);
+            if (status == SOCKET_ERROR) {
+                printf("send failed: %d\n", WSAGetLastError());
+                goto cleanup;
+            }
+            printf("Bytes sent: %d\n", status);
+            tcp.sts = 0;
 
         } else if (status == 0) {
             printf("Connection closing...\n");
+            byeMessageReply(&repMsg, tcp.wbuffer);
+            tcp.sts = 1;
             break;
         } else {
             printf("recv failed: %d\n", WSAGetLastError());
-            goto error;
+            byeMessageReply(&repMsg, tcp.wbuffer);
+            tcp.sts = 1;
+            exitCode = 1;
+            goto cleanup;
         }
-
-        // placeholder action after receiving data (echoing it back)
-        status = send(tcp.cSocket, "OK\n", 3, 0);
-        if (status == SOCKET_ERROR) {
-            printf("send failed: %d\n", WSAGetLastError());
-            goto error;
-        }
-        printf("Bytes sent: %d\n", status);
 
     } while (1);
+
+cleanup:
+    // final reply attempt
+    if (tcp.sts == 1 && tcp.cSocket != INVALID_SOCKET) {
+        int status = send(tcp.cSocket,
+            tcp.wbuffer, repMsg.length + BA_HEADER_SIZE_B, 0);
+        if (status == SOCKET_ERROR) {
+            fprintf(stderr, "final send failed: %d\n", status);
+        } else {
+            fprintf(stderr, "final bytes sent: %d\n", status);
+        }
+        tcp.sts = 0;
+    }
 
     // Portaudio specific stream shutdown
     if (app->streamRunning)
@@ -457,30 +442,20 @@ int initWinsock(appInfo_t* app) {
     if (app->streamOpen)
         Pa_CloseStream(app->stream);
 
-    // free the buffer memory
-    free(tcp.buffer);
-
-    // final shutdown and cleanup
-    shutdown(tcp.cSocket, SD_SEND);
-    closesocket(tcp.cSocket);
-    WSACleanup();
-
-    printf("TCP server closed cleanly.\n");
-
-    return 0;
-
-error:
-    // free the buffer memory
-    if (tcp.buffer != NULL)
-        free(tcp.buffer);
-
+    // Socket cleanup
+    cleanupTcpState(&tcp);
     if (tcp.cSocket != INVALID_SOCKET) {
         shutdown(tcp.cSocket, SD_SEND);
         closesocket(tcp.cSocket);
     }
-
     WSACleanup();
-
-    return 1;
+    
+    if (exitCode == 0) {
+        fprintf(stderr, "tcp server closed without error");
+        return 0;
+    } else {
+        fprintf(stderr, "tcp server closed with error");
+        return 1;
+    }
 }
 
