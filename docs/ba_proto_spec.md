@@ -226,7 +226,7 @@ dev idx, 4B  dev human name, 32B
 0xFFFFFFFF   0xFFFFFFFF    0xFFFFFFFFFFFFFFFF
 in ch n, 4B  out ch n, 4B  sample r, 8B
 ```
-Each device occupies 52B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII).
+Each device occupies 52B, where the first 4B is the device idx, type `int`, and the 32B proceeding B are the human name, the `char` (ASCII). Next 4 bytes are the maximum number of input channels (`int`), the next 4 after that the maximum output channels (`int`). The final 8bytes are the default sample rate (`double`).
 
 > Successful replies for this message will be of a variable length, indicated by the header content length value. Content length will be 52 * device count B.
 
