@@ -1,7 +1,49 @@
 sequenceDiagram
-    participant BestAmp             as A
-    participant BestAmpUI.Bridge    as B
-    participant BestAmpUI.Client    as C
+    actor U as User
+
+    participant C   as BestAmpUI.Client
+    participant B   as BestAmpUI.Bridge
+    participant A1  as BestAmp
+    participant A2  as BestAmp (PortAudio)
 
 
-    C ->> B ->> A: test
+    %% start
+    U ->> C: Clicks "Send Settings Msg"
+    activate C
+    Note right of C: Client is connected<br/>to the Bridge via websocket
+    C ->> B: `send(Settings.BuildMsg())`
+    activate B
+    B ->> A1: `ForwardBrowserToTcpAsync`
+    activate A1
+    Note right of B: Bridge receives websocket message<br/>& forwards the message to `BestAmp` w/  raw TCP
+
+    critical    Process Message Type 1
+    A1 ->> A2: `Pa_IsFormatSupported`
+    activate A2
+    option      Valid Message Type 1
+        A2 -->> A1: `true`
+        Note right of A1: The existing PortAudio stream must be closed & reopened w/<br/>the users newly select host API / device preferences
+        A1 ->> A2: Stop Stream
+        A2 -->> A1: Stream Stopped
+        A1 ->> A2: Close Stream
+        A2 -->> A1: Stream Closed
+        A1 ->> A2: Open Stream (new host API & device preferences)
+        A2 -->> A1: Stream Opened
+        A1 ->> A2: Start Stream
+        A2 -->> A1: Stream Started
+        A1 -->> B: response type 1001, code 0
+        B -->> C: response type 1001, code 0
+        C -->> U: Sees the message
+    option      Invalid Message Type 1
+        A2 -->> A1: `false`
+        Note right of A1: The user supplied a combination of Host API & device options<br/>Which PortAudio rejected, do nothing & let them know that<br/>their request was not valid
+        %% [WO] annoyingly I have to put this in here
+        deactivate A2
+        A1 -->> B: response type 1001, code 1
+        B -->> C: response type 1001, code 1
+        C -->> U: Sees the message
+    end
+    deactivate A1
+    deactivate B
+    deactivate C
+    %% end
