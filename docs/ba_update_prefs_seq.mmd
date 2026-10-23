@@ -3,7 +3,7 @@ sequenceDiagram
 
     participant C   as BestAmpUI.Client
     participant B   as BestAmpUI.Bridge
-    participant A1  as BestAmp (Server Thread)
+    participant A1  as BestAmp
     participant A2  as BestAmp (PortAudio)
 
 
@@ -18,7 +18,7 @@ sequenceDiagram
     Note right of B: Bridge receives websocket message<br/>& forwards the message to `BestAmp` w/  raw TCP
 
     critical    Process Message Type 1
-    A1 ->> A2: `Pa_IsFormatValid`
+    A1 ->> A2: `Pa_IsFormatSupported`
     activate A2
     option      Valid Message Type 1
         A2 -->> A1: `true`
