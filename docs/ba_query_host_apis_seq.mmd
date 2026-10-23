@@ -8,4 +8,26 @@ sequenceDiagram
 
 
     %% start
+    U ->> C: Opens Application
+    activate C
+    C ->> B: `send(HostApiRequest.BuildMsg())`
+    activate B
+    Note right of B: forward websocket to tcp
+    B ->> A1: 
+    activate A1
+    Note right of A1: process message type `3`
+    A1 ->> A2: `Pa_GetHostApiCount`
+    A2 -->> A1: `n`
+    loop n times
+        A1 ->> A2: `Pa_GetHostApiInfo`
+        A2 -->> A1: `PaHostApiInfo*`
+    end
+    A1 -->> B: response type 1003, host api list (variable length)
+    Note right of B: forward tcp to websocket
+    deactivate A1
+    B -->> C: response type 1003, host api list (variable length)
+    deactivate B
+    C -->> U: Sees default values in settings
+    deactivate C
+
     %% end
