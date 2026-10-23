@@ -1,5 +1,4 @@
 #include "ba_tcp_messages.h"
-#include <winsock2.h>
 
 
 void printMessage(message_t* msg)
@@ -137,6 +136,8 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
         rbuf + (t_data_off += sizeof(ampValues->treble))
     ), sizeof(ampValues->power));
     ampValues->power = ntohl(ampValues->power);
+
+    // memcpy(&ampValues->voice)
  
     fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }
