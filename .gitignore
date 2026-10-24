@@ -4,3 +4,6 @@ build/*
 dist
 dist/*
 
+docs/export
+docs/export/*
+
