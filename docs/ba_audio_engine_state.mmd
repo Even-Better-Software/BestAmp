@@ -1,7 +1,12 @@
+---
+title: Audio Engine State Diagram
+---
 stateDiagram-v2
-    [*] --> Still
-    Still --> [*]
-    Still --> Moving
-    Moving --> Still
-    Moving --> Crash
-    Crash --> [*]
+    [*] --> Closed: Initial stream state
+    Closed --> Open: Update amp values request validated
+    Note left of Closed: BestAmp does not open nor start the PortAudio stream by default
+    Open --> Started: PortAudio stream open succeeds
+    Started --> Stopped: Update amp values request or Program Termination
+    Note left of Started: Start or resume the audio thread (bestAmpCB)
+    Stopped --> Closed: PortAudio stream close succeeds
+    Closed --> [*]: Program Termination
