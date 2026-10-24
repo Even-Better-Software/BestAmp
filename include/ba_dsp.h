@@ -2,6 +2,9 @@
 #define BA_DSP
 
 
+#include <math.h>
+
+
 /**
 Sources:
 https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
@@ -63,14 +66,14 @@ To be called when amp treble dial is modified.
     re-computes highShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_highShelf(biQuadFilter_t* bf,
-                            float dbGain, float sampleFreq);
+                            float dbGain, float sampleFreq, float cFreq);
 
 /**
 To be called when amp bass dial is modified.
     re-computes lowShelf biQuadFilter when `dbGain` has been modified by the user
 */
 void biQuadFilter_lowShelf( biQuadFilter_t* bf,
-                            float dbGain, float sampleFreq);
+                            float dbGain, float sampleFreq, float cFreq);
 
 #endif
 

@@ -1,5 +1,3 @@
-#include <math.h>
-
 #include "ba_dsp.h"
 
 
@@ -31,11 +29,12 @@ during the process function.
 but its late & I dont want to work on this anymore.
 */
 
-void biQuadFilter_lowShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
-{
+void biQuadFilter_lowShelf(biQuadFilter_t* bf,
+    float dbGain, float sampleFreq, float cFreq
+) {
     float A, w0, a, sinw0, cosw0;
     A       = powf(10, dbGain/40);
-    w0      = TWOPI*(BA_BASS_CENTER_FREQ/sampleFreq);
+    w0      = TWOPI*(cFreq/sampleFreq);
     sinw0   = sinf(w0);
     cosw0   = cosf(w0);
     a       = (sinw0/2)*sqrtf(2); // I simplified this for S = 1
@@ -49,11 +48,12 @@ void biQuadFilter_lowShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
     bf->a2 = ( (A+1)+(A-1)*cosw0-2*sqrtf(A)*a ) / bf->a0;
 }
 
-void biQuadFilter_highShelf(biQuadFilter_t* bf, float dbGain, float sampleFreq)
-{
+void biQuadFilter_highShelf(biQuadFilter_t* bf,
+    float dbGain, float sampleFreq, float cFreq
+) {
     float A, w0, a, sinw0, cosw0;
     A       = powf(10, dbGain/40);
-    w0      = TWOPI*(BA_TREB_CENTER_FREQ/sampleFreq);
+    w0      = TWOPI*(cFreq/sampleFreq);
     sinw0   = sinf(w0);
     cosw0   = cosf(w0);
     a       = (sinw0/2)*sqrtf(2); // I simplified this for S = 1

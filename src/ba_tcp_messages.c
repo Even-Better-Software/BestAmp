@@ -1,5 +1,4 @@
 #include "ba_tcp_messages.h"
-#include <winsock2.h>
 
 
 void printMessage(message_t* msg)
@@ -65,8 +64,8 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
-    if (msg->length != 0x2C)
-        fprintf(stderr, "\e[31mupdate prefs content length should be 44 bytes.\e[0m\n");
+    if (msg->length != 0x24)
+        fprintf(stderr, "\e[31mupdate prefs content length should be 36 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
 
@@ -113,8 +112,8 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 
 void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
 {
-    if (msg->length != 0x10)
-        fprintf(stderr, "\e[31mupdate amp values content length should be 16 bytes.\e[0m\n");
+    if (msg->length != 0x14)
+        fprintf(stderr, "\e[31mupdate amp values content length should be 20 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
 
@@ -137,6 +136,11 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
         rbuf + (t_data_off += sizeof(ampValues->treble))
     ), sizeof(ampValues->power));
     ampValues->power = ntohl(ampValues->power);
+
+    memcpy(&ampValues->voice, (
+        rbuf + (t_data_off += sizeof(ampValues->power))
+    ), sizeof(ampValues->voice));
+    ampValues->voice = ntohl(ampValues->voice);
  
     fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }

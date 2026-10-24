@@ -37,6 +37,9 @@ int main(int argc, char** argv)
     appInfo.ampValues = amp;
     appInfo.baPrefs = prefs;
 
+    // [WO] testing show all the ampVoices
+    printAmpVoices();
+
     // initalize portaudio
     e = Pa_Initialize();
     if (e != paNoError)

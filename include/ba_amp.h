@@ -8,20 +8,42 @@
 #define BA_DIAL_MAX (10)
 
 
+typedef enum BA_AMP_VOICES {
+    DEFAULT,
+    TEST
+} ampVoiceType_t;
+
+
+typedef struct BA_AMP_VOICE {
+    char* name;
+    float bassCornerFreq;
+    float trebleCornerFreq;
+} ampVoice_t;
+
+
+#define BA_AMP_VOICE_COUNT (2)
+
+
 typedef struct BA_AMP_VALUES {
     int gain;           // 1-10, as per my amp
     int bass;           // 1-10, as per my amp
     int treble;         // 1-10, as per my amp
     int power;          // 1-10, as per my amp
+    ampVoiceType_t voice;
     biQuadFilter_t bqf_bass;
     biQuadFilter_t bqf_treble;
 } ampValues_t;
+
+
+// const extern char* ampVoiceNames[];
+extern const ampVoice_t voices[];
 
 
 /**
 Initializes `ampValues_t` struct (gain, bass, treble, power) to 1.
 */
 void initAmpValues(ampValues_t* a);
+
 
 /**
 print `ampValues_t` struct (to be used if the program is being debugged
@@ -33,6 +55,18 @@ void printAmpValues(ampValues_t* a);
 Test that a value is between BA_DIAL_MIN & BA_DIAL_MAX
 */
 int testAmpValue(int value);
+
+
+/**
+Convert some integer value to a voice value.
+    `raw` -> the raw integer value
+    returns an `ampVoice_t` compliant enum
+*/
+ampVoiceType_t itoavt(int raw);
+
+void printAmpVoice(ampVoice_t* v);
+void printAmpVoices();
+ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx);
 
 /**
 Sets the value of the `gain` property of the passed `ampValues_t` `a` to be
