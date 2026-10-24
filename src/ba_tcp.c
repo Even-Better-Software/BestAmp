@@ -87,14 +87,19 @@ int processRequest(appInfo_t* app,
             }
             // Format supported, so pTemp becomes app->prefs
             app->baPrefs = pTemp;
+            ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
             
             // Initial biquad calculation
             biQuadFilter_lowShelf(
                 &app->ampValues.bqf_bass,
-                (float)app->ampValues.bass, (float)app->baPrefs.sampleRate);
+                (float)app->ampValues.bass,
+                (float)app->baPrefs.sampleRate,
+                cVoice.bassCornerFreq);
             biQuadFilter_highShelf(
                 &app->ampValues.bqf_treble,
-                (float)app->ampValues.treble, (float)app->baPrefs.sampleRate);
+                (float)app->ampValues.treble,
+                (float)app->baPrefs.sampleRate,
+                cVoice.trebleCornerFreq);
 
             // Start the portaudio stream
             err = Pa_OpenStream(  &app->stream,
@@ -132,14 +137,21 @@ int processRequest(appInfo_t* app,
             initAmpValues(&avTemp);
             parseAmpValuesFromMsg(&avTemp, msg, rbuf);
             printAmpValues(&avTemp);
+            // this function handles setting this to the default voice if
+            //      the supplied voice is outside of the valid range of voices
+            ampVoice_t cVoice = getAmpVoice(avTemp.voice);
 
             // recalculate biquads
             biQuadFilter_lowShelf(
                 &avTemp.bqf_bass,
-                (float)avTemp.bass, (float)app->baPrefs.sampleRate);
+                (float)avTemp.bass,
+                (float)app->baPrefs.sampleRate,
+                cVoice.bassCornerFreq);
             biQuadFilter_highShelf(
                 &avTemp.bqf_treble,
-                (float)avTemp.treble, (float)app->baPrefs.sampleRate);
+                (float)avTemp.treble,
+                (float)app->baPrefs.sampleRate,
+                cVoice.trebleCornerFreq);
             
             // because it is not possible for this to fail
             // we can send the generic OK reply

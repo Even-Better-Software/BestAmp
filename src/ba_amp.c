@@ -77,6 +77,14 @@ void printAmpVoices()
 }
 
 
+ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx)
+{
+    if (voiceTypeIdx <= 0 || voiceTypeIdx >= BA_AMP_VOICE_COUNT)
+        return voices[DEFAULT];
+    return voices[voiceTypeIdx];
+}
+
+
 void setAmpGain(ampValues_t* a, int gainValue)
 {
     if (testAmpValue(gainValue)) {

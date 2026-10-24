@@ -13,6 +13,7 @@ typedef enum BA_AMP_VOICES {
     TEST
 } ampVoiceType_t;
 
+
 typedef struct BA_AMP_VOICE {
     char* name;
     float bassCornerFreq;
@@ -64,6 +65,7 @@ Convert some integer value to a voice value.
 ampVoiceType_t itoavt(int raw);
 
 void printAmpVoices();
+ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx);
 
 /**
 Sets the value of the `gain` property of the passed `ampValues_t` `a` to be

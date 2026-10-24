@@ -137,7 +137,10 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
     ), sizeof(ampValues->power));
     ampValues->power = ntohl(ampValues->power);
 
-    // memcpy(&ampValues->voice)
+    memcpy(&ampValues->voice, (
+        rbuf + (t_data_off += sizeof(ampValues->power))
+    ), sizeof(ampValues->voice));
+    ampValues->voice = ntohl(ampValues->power);
  
     fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }
