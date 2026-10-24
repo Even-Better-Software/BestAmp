@@ -64,8 +64,8 @@ int parseMessage(message_t* pMsg, char* msg)
 
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
-    if (msg->length != 0x2C)
-        fprintf(stderr, "\e[31mupdate prefs content length should be 44 bytes.\e[0m\n");
+    if (msg->length != 0x24)
+        fprintf(stderr, "\e[31mupdate prefs content length should be 36 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
 
