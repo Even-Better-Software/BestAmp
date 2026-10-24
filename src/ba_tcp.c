@@ -87,7 +87,8 @@ int processRequest(appInfo_t* app,
             }
             // Format supported, so pTemp becomes app->prefs
             app->baPrefs = pTemp;
-            ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
+            ampVoiceType_t voice = itoavt(app->ampValues.voice);
+            ampVoice_t cVoice = getAmpVoice(voice);
             
             // Initial biquad calculation
             biQuadFilter_lowShelf(
@@ -139,7 +140,8 @@ int processRequest(appInfo_t* app,
             printAmpValues(&avTemp);
             // this function handles setting this to the default voice if
             //      the supplied voice is outside of the valid range of voices
-            ampVoice_t cVoice = getAmpVoice(avTemp.voice);
+            ampVoiceType_t voice = itoavt(avTemp.voice);
+            ampVoice_t cVoice = getAmpVoice(voice);
 
             // recalculate biquads
             biQuadFilter_lowShelf(
