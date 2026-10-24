@@ -93,7 +93,7 @@ Intention of this message: update host API, input device, output device, input c
 The request shall be of the following byte-structure:
 ```
 0x00000001  0x00000020
-type, 4B    content length (44B), 4B    
+type, 4B    content length (36B), 4B    
 
 
 0xFFFFFFFF    0xFFFFFFFF  0xFFFFFFFF   0xFFFFFFFF 
