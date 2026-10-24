@@ -143,6 +143,9 @@ int processRequest(appInfo_t* app,
             ampVoiceType_t voice = itoavt(avTemp.voice);
             ampVoice_t cVoice = getAmpVoice(voice);
 
+            // [WO] should be able to see the new amp voice name
+            fprintf(stderr, "NEW AMP VOICE: %s\n", cVoice.name);
+
             // recalculate biquads
             biQuadFilter_lowShelf(
                 &avTemp.bqf_bass,
