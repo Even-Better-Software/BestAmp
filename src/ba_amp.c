@@ -7,13 +7,13 @@
 const ampVoice_t voices[] = {
     {  
         .name               = "default",
-        .bassCornerFreq     = 4800.0f,
-        .trebleCornerFreq   = 220.0f
+        .bassCornerFreq     = 220.0f,
+        .trebleCornerFreq   = 4800.0f
     },
     {
         .name               = "test",
-        .bassCornerFreq     = 5000.0f,
-        .trebleCornerFreq   = 200.0f
+        .bassCornerFreq     = 200.0f,
+        .trebleCornerFreq   = 5000.0f
     }
 };
 

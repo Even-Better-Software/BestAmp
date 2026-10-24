@@ -2,6 +2,9 @@
 #define BA_DSP
 
 
+#include <math.h>
+
+
 /**
 Sources:
 https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html

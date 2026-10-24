@@ -64,6 +64,7 @@ Convert some integer value to a voice value.
 */
 ampVoiceType_t itoavt(int raw);
 
+void printAmpVoice(ampVoice_t* v);
 void printAmpVoices();
 ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx);
 
