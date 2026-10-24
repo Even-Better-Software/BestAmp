@@ -20,8 +20,8 @@ const ampVoice_t voices[] = {
 
 void printAmpValues(ampValues_t* a)
 {
-    printf("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d }\n",
-        a->gain, a->bass, a->treble, a->power); 
+    printf("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d, voice: %d }\n",
+        a->gain, a->bass, a->treble, a->power, a->voice); 
 }
 
 
