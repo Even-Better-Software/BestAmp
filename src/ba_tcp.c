@@ -87,23 +87,23 @@ int processRequest(appInfo_t* app,
             }
             // Format supported, so pTemp becomes app->prefs
             app->baPrefs = pTemp;
-            //ampVoiceType_t voice = itoavt(app->ampValues.voice);
-            //ampVoice_t cVoice = getAmpVoice(voice);
+            ampVoiceType_t voice = itoavt(app->ampValues.voice);
+            ampVoice_t cVoice = getAmpVoice(voice);
 
             // [WO] should be able to see the new amp voice name
-            //fprintf(stderr, "AMP VOICE: %s\n", cVoice.name);
+            fprintf(stderr, "AMP VOICE: %s\n", cVoice.name);
             
             // Initial biquad calculation
             biQuadFilter_lowShelf(
                 &app->ampValues.bqf_bass,
                 (float)app->ampValues.bass,
                 (float)app->baPrefs.sampleRate,
-                /*cVoice.bassCornerFreq*/ 200.0f);
+                cVoice.bassCornerFreq);
             biQuadFilter_highShelf(
                 &app->ampValues.bqf_treble,
                 (float)app->ampValues.treble,
                 (float)app->baPrefs.sampleRate,
-                /*cVoice.trebleCornerFreq*/ 5000.0f);
+                cVoice.trebleCornerFreq);
 
             // Start the portaudio stream
             err = Pa_OpenStream(  &app->stream,
@@ -143,23 +143,23 @@ int processRequest(appInfo_t* app,
             printAmpValues(&avTemp);
             // this function handles setting this to the default voice if
             //      the supplied voice is outside of the valid range of voices
-            // ampVoiceType_t voice = itoavt(avTemp.voice);
-            // ampVoice_t cVoice = getAmpVoice(voice);
+            ampVoiceType_t voice = itoavt(avTemp.voice);
+            ampVoice_t cVoice = getAmpVoice(voice);
 
             // [WO] should be able to see the new amp voice name
-            // printAmpVoice(&cVoice);
+            printAmpVoice(&cVoice);
 
             // recalculate biquads
             biQuadFilter_lowShelf(
                 &avTemp.bqf_bass,
                 (float)avTemp.bass,
                 (float)app->baPrefs.sampleRate,
-                200.0f);
+                cVoice.bassCornerFreq);
             biQuadFilter_highShelf(
                 &avTemp.bqf_treble,
                 (float)avTemp.treble,
                 (float)app->baPrefs.sampleRate,
-                5000.0f);
+                cVoice.trebleCornerFreq);
             
             // because it is not possible for this to fail
             // we can send the generic OK reply
