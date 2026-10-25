@@ -38,276 +38,273 @@ int processRequest(appInfo_t* app,
     // A valid request message
     // [WO] longterm -> move these to message handler functions
     //      move the implementations for each message type to their own function
-    if (msg->type >= KILL && msg->type <= QUERY_DEVICES_FOR_HOST_API) {
-        switch ((reqMessageType_t)msg->type) {
-        case REQ_UPDATE_PREFS: {
-            fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
-            // Parse prefs from message
-            baPrefs_t pTemp;
-            updatePrefsRep_t reply = {0};
-            initBaPrefs(&pTemp);
-            parsePrefsFromMsg(&pTemp, msg, rbuf);
-            printBaPrefs(&pTemp);
-            coalesceBaPrefsToPaDefaults(&pTemp);
-            printBaPrefs(&pTemp);
+    switch ((reqMessageType_t)msg->type) {
+    case REQ_UPDATE_PREFS: {
+        fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
+        // Parse prefs from message
+        baPrefs_t pTemp;
+        updatePrefsRep_t reply = {0};
+        initBaPrefs(&pTemp);
+        parsePrefsFromMsg(&pTemp, msg, rbuf);
+        printBaPrefs(&pTemp);
+        coalesceBaPrefsToPaDefaults(&pTemp);
+        printBaPrefs(&pTemp);
 
-            if (app->streamRunning)
-                Pa_StopStream(app->stream);         // [WO] errors unhandled
-            if (app->streamOpen)
-                Pa_CloseStream(app->stream);        // [WO] errors unhandled
+        if (app->streamRunning)
+            Pa_StopStream(app->stream);         // [WO] errors unhandled
+        if (app->streamOpen)
+            Pa_CloseStream(app->stream);        // [WO] errors unhandled
 
-            // Create Input/Output stream parameters
-            PaStreamParameters iStreamParams, oStreamParams;
+        // Create Input/Output stream parameters
+        PaStreamParameters iStreamParams, oStreamParams;
 
-            iStreamParams.device = pTemp.inDevIdx;
-            iStreamParams.channelCount = pTemp.inChanneln;
-            iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
-            iStreamParams.sampleFormat = pTemp.sampleFormat;
-            iStreamParams.hostApiSpecificStreamInfo = NULL;
+        iStreamParams.device = pTemp.inDevIdx;
+        iStreamParams.channelCount = pTemp.inChanneln;
+        iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
+        iStreamParams.sampleFormat = pTemp.sampleFormat;
+        iStreamParams.hostApiSpecificStreamInfo = NULL;
 
-            oStreamParams.device = pTemp.outDevIdx;
-            oStreamParams.channelCount = pTemp.outChanneln;
-            oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
-            oStreamParams.sampleFormat = pTemp.sampleFormat;
-            oStreamParams.hostApiSpecificStreamInfo = NULL;
+        oStreamParams.device = pTemp.outDevIdx;
+        oStreamParams.channelCount = pTemp.outChanneln;
+        oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
+        oStreamParams.sampleFormat = pTemp.sampleFormat;
+        oStreamParams.hostApiSpecificStreamInfo = NULL;
 
-            // Is format supported test 
-            // Pa_IsFormatSupported
-            // if the format it not supported we write a bad message reply
-            //      we should not write a bad message reply, rather the reply as per the spec
-            // return from this method w/ BA_CONTINUE (since the server is fine, basically we are dropping this request)
-            // send the update prefs bad preferences reply
-            err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
-            if (err != paNoError) {
-                printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
-                // badMessageReply(rmsg, wbuf);
-                reply.code = 1;
-                updatePreferencesReply(rmsg, wbuf, &reply);
-                return BA_CONTINUE;
-            }
-            // Format supported, so pTemp becomes app->prefs
-            app->baPrefs = pTemp;
-            ampVoiceType_t voice = itoavt(app->ampValues.voice);
-            ampVoice_t cVoice = getAmpVoice(voice);
-
-            // [WO] should be able to see the new amp voice name
-            fprintf(stderr, "AMP VOICE: %s\n", cVoice.name);
-            
-            // Initial biquad calculation
-            biQuadFilter_lowShelf(
-                &app->ampValues.bqf_bass,
-                (float)app->ampValues.bass,
-                (float)app->baPrefs.sampleRate,
-                cVoice.bassCornerFreq);
-            biQuadFilter_highShelf(
-                &app->ampValues.bqf_treble,
-                (float)app->ampValues.treble,
-                (float)app->baPrefs.sampleRate,
-                cVoice.trebleCornerFreq);
-
-            // Start the portaudio stream
-            err = Pa_OpenStream(  &app->stream,
-                                &iStreamParams,
-                                &oStreamParams,
-                                app->baPrefs.sampleRate,
-                                app->baPrefs.framesPerBuffer,
-                                0,
-                                bestAmpCB,
-                                app );
-            if (err != paNoError) {
-                printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
-                reply.code = 1;
-                updatePreferencesReply(rmsg, wbuf, &reply);
-                return BA_CONTINUE;
-            }
-            app->streamOpen = 1;
-            err = Pa_StartStream(app->stream);
-            if (err != paNoError) {
-                reply.code = 1;
-                updatePreferencesReply(rmsg, wbuf, &reply);
-                return BA_CONTINUE;
-            }
-            app->streamRunning = 1;
-   
-            // Send the update prefs OK reply
-            reply.code = 0;
+        // Is format supported test 
+        // Pa_IsFormatSupported
+        // if the format it not supported we write a bad message reply
+        //      we should not write a bad message reply, rather the reply as per the spec
+        // return from this method w/ BA_CONTINUE (since the server is fine, basically we are dropping this request)
+        // send the update prefs bad preferences reply
+        err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
+        if (err != paNoError) {
+            printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
+            // badMessageReply(rmsg, wbuf);
+            reply.code = 1;
             updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
-
         }
-        case REQ_UPDATE_AMP_VALS: {
-            fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
-            ampValues_t avTemp;
-            initAmpValues(&avTemp);
-            parseAmpValuesFromMsg(&avTemp, msg, rbuf);
-            printAmpValues(&avTemp);
-            // this function handles setting this to the default voice if
-            //      the supplied voice is outside of the valid range of voices
-            ampVoiceType_t voice = itoavt(avTemp.voice);
-            ampVoice_t cVoice = getAmpVoice(voice);
+        // Format supported, so pTemp becomes app->prefs
+        app->baPrefs = pTemp;
+        ampVoiceType_t voice = itoavt(app->ampValues.voice);
+        ampVoice_t cVoice = getAmpVoice(voice);
 
-            // [WO] should be able to see the new amp voice name
-            printAmpVoice(&cVoice);
+        // [WO] should be able to see the new amp voice name
+        fprintf(stderr, "AMP VOICE: %s\n", cVoice.name);
+        
+        // Initial biquad calculation
+        biQuadFilter_lowShelf(
+            &app->ampValues.bqf_bass,
+            (float)app->ampValues.bass,
+            (float)app->baPrefs.sampleRate,
+            cVoice.bassCornerFreq);
+        biQuadFilter_highShelf(
+            &app->ampValues.bqf_treble,
+            (float)app->ampValues.treble,
+            (float)app->baPrefs.sampleRate,
+            cVoice.trebleCornerFreq);
 
-            // recalculate biquads
-            biQuadFilter_lowShelf(
-                &avTemp.bqf_bass,
-                (float)avTemp.bass,
-                (float)app->baPrefs.sampleRate,
-                cVoice.bassCornerFreq);
-            biQuadFilter_highShelf(
-                &avTemp.bqf_treble,
-                (float)avTemp.treble,
-                (float)app->baPrefs.sampleRate,
-                cVoice.trebleCornerFreq);
-            
-            // because it is not possible for this to fail
-            // we can send the generic OK reply
-            //      actually I can envision a situation where this does fail
-            //      say that a bad voice value is supplied, we should tell the
-            //      client about this & then use the default voice (voice 0)
-            app->ampValues = avTemp;
-            genericOkReply(rmsg, wbuf);
-            return BA_CONTINUE;
-
-        }
-        case REQ_QUERY_HOST_APIS: {
-            // [WO] BA_BUFLEN overflow risk (variable length)
-
-            int replySizeEstimate = 0;
-            queryHostApiRep_t reply = { 0 };
-
-            fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
-            // fprintf(stdout, BA_UNIMPLEMENTED);
-
-            // ask port audio for the host APIs
-            // just pass this to the message processor basically
-            // I need memory, I need N * sizeof() to store const pointers to hostapi info structs
-            PaHostApiIndex hostApiCount = Pa_GetHostApiCount();
-            fprintf(stderr, "%d host apis\n", hostApiCount);
-            const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
-                calloc(hostApiCount, sizeof(PaHostApiIndex*));
-            for (int i = 0; i < hostApiCount; i++) {
-                const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(i);
-                *(hostApis + i) = hinfo;
-            }
-            reply.hostApiCount = hostApiCount;
-            reply.hostApis = hostApis;
-
-            // we should probably check the buffer length here & scale it if
-            //      necessary
-            //      Im thinking an exponentially bounded growth
-            //          (double it until some max)
-            //      figure out the maximum number of host APIs
-            //          (no idea what this is)
-            replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
-            fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
-            if (replySizeEstimate >= BA_BUFLEN) {
-                fprintf(stderr, "message overflow risk\n");
-            } // [WO] for now, this will just whine into stderr
-
-            queryHostApisReply(rmsg, wbuf, &reply);
-            free(hostApis);
-
-            return BA_CONTINUE;
-
-        }
-        case REQ_QUERY_DEFAULT_HOST_API: {
-            int hostApiCount = 1;
-            queryHostApiRep_t reply = { 0 };
-
-            fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
-
-            // ask port audio for the default host API
-            //      if the default host API cannot be queried this is a fatal case
-            PaHostApiIndex hostApiIndex = Pa_GetDefaultHostApi();
-            if (hostApiIndex < 0) {
-                fprintf(stderr, BA_PORTAUDIO_ERROR);
-                return BA_ERROR_FATAL;
-            }
-            
-            // fprintf(stderr, "%d host apis\n", hostApiCount);
-            const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
-                calloc(hostApiCount, sizeof(PaHostApiIndex*));
-            const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(hostApiIndex);
-            *(hostApis + 0) = hinfo;
-            reply.hostApiCount = hostApiCount;
-            reply.hostApis = hostApis;
-
-            queryHostApisReply(rmsg, wbuf, &reply);
-            free(hostApis);
-
-            return BA_CONTINUE;
-
-        }
-        case REQ_QUERY_DEVICES_FOR_HOST_API: {
-            // [WO] BA_BUFLEN overflow risk (variable length)
-
-            int hostApiIdx = 0;
-            int replySizeEstimate = 0;
-            queryDeviceRep_t reply = {0};
-
-            parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
-
-            fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
-            fprintf(stderr, "query devices for: %d\n", hostApiIdx);
-
-            // Get the Host API Info Struct
-            //      if this fails, then the index supplied is invalid so
-            //      we send the bad reply back to the client
-            const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
-            if (hostApi == NULL) {
-                fprintf(stderr, "\e[31mgiven host api index returned NULL hostapi info struct must be invalid.\e[0m\n");
-                queryDevicesBadReply(rmsg, wbuf);
-                return BA_CONTINUE;
-            }
-            reply.hostApiIdx = hostApiIdx;
-            reply.deviceIdxes = (int*)
-                calloc(hostApi->deviceCount, sizeof(int));
-            reply.devices = (const PaDeviceInfo**)
-                calloc(hostApi->deviceCount, sizeof(PaDeviceInfo*));
-            reply.deviceCount = hostApi->deviceCount;
-            for (int i = 0; i < hostApi->deviceCount; i++) {
-                PaDeviceIndex deviceIdx     = Pa_HostApiDeviceIndexToDeviceIndex(hostApiIdx, i);
-                const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
-                *(reply.deviceIdxes + i)    = deviceIdx;
-                *(reply.devices + i)        = device;
-                /*
-                fprintf(stderr, "host device idx: %d, global device idx: %d\n",
-                    i, deviceIdx);
-                */
-            }
-            // 4 32 4 4 8 = 52 bytes per device
-            // we should probably check the buffer length here & scale it if
-            //      necessary
-            //      Im thinking an exponentially bounded growth
-            //          (double it until some max)
-            //      figure out the maximum number of host APIs
-            //          (no idea what this is)
-            replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
-            fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
-            if (replySizeEstimate >= BA_BUFLEN) {
-                fprintf(stderr, "message overflow risk\n");
-            } // [WO] for now, this will just whine into stderr
-
-            queryDevicesReply(rmsg, wbuf, &reply);
-
-            free(reply.deviceIdxes);
-            free(reply.devices);
-
+        // Start the portaudio stream
+        err = Pa_OpenStream(  &app->stream,
+                            &iStreamParams,
+                            &oStreamParams,
+                            app->baPrefs.sampleRate,
+                            app->baPrefs.framesPerBuffer,
+                            0,
+                            bestAmpCB,
+                            app );
+        if (err != paNoError) {
+            printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
+            reply.code = 1;
+            updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
         }
-        case KILL: {
-
+        app->streamOpen = 1;
+        err = Pa_StartStream(app->stream);
+        if (err != paNoError) {
+            reply.code = 1;
+            updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
+        }
+        app->streamRunning = 1;
 
-        }} 
-    // Not a request message
-    } else {
-        fprintf(stderr, BA_INVALID_REQUEST_TYPE);
+        // Send the update prefs OK reply
+        reply.code = 0;
+        updatePreferencesReply(rmsg, wbuf, &reply);
+        return BA_CONTINUE;
+
+    }
+    case REQ_UPDATE_AMP_VALS: {
+        fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
+        ampValues_t avTemp;
+        initAmpValues(&avTemp);
+        parseAmpValuesFromMsg(&avTemp, msg, rbuf);
+        printAmpValues(&avTemp);
+        // this function handles setting this to the default voice if
+        //      the supplied voice is outside of the valid range of voices
+        ampVoiceType_t voice = itoavt(avTemp.voice);
+        ampVoice_t cVoice = getAmpVoice(voice);
+
+        // [WO] should be able to see the new amp voice name
+        printAmpVoice(&cVoice);
+
+        // recalculate biquads
+        biQuadFilter_lowShelf(
+            &avTemp.bqf_bass,
+            (float)avTemp.bass,
+            (float)app->baPrefs.sampleRate,
+            cVoice.bassCornerFreq);
+        biQuadFilter_highShelf(
+            &avTemp.bqf_treble,
+            (float)avTemp.treble,
+            (float)app->baPrefs.sampleRate,
+            cVoice.trebleCornerFreq);
+        
+        // because it is not possible for this to fail
+        // we can send the generic OK reply
+        //      actually I can envision a situation where this does fail
+        //      say that a bad voice value is supplied, we should tell the
+        //      client about this & then use the default voice (voice 0)
+        app->ampValues = avTemp;
+        genericOkReply(rmsg, wbuf);
+        return BA_CONTINUE;
+
+    }
+    case REQ_QUERY_HOST_APIS: {
+        // [WO] BA_BUFLEN overflow risk (variable length)
+
+        int replySizeEstimate = 0;
+        queryHostApiRep_t reply = { 0 };
+
+        fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
+        // fprintf(stdout, BA_UNIMPLEMENTED);
+
+        // ask port audio for the host APIs
+        // just pass this to the message processor basically
+        // I need memory, I need N * sizeof() to store const pointers to hostapi info structs
+        PaHostApiIndex hostApiCount = Pa_GetHostApiCount();
+        fprintf(stderr, "%d host apis\n", hostApiCount);
+        const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+            calloc(hostApiCount, sizeof(PaHostApiIndex*));
+        for (int i = 0; i < hostApiCount; i++) {
+            const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(i);
+            *(hostApis + i) = hinfo;
+        }
+        reply.hostApiCount = hostApiCount;
+        reply.hostApis = hostApis;
+
+        // we should probably check the buffer length here & scale it if
+        //      necessary
+        //      Im thinking an exponentially bounded growth
+        //          (double it until some max)
+        //      figure out the maximum number of host APIs
+        //          (no idea what this is)
+        replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
+        fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+        if (replySizeEstimate >= BA_BUFLEN) {
+            fprintf(stderr, "message overflow risk\n");
+        } // [WO] for now, this will just whine into stderr
+
+        queryHostApisReply(rmsg, wbuf, &reply);
+        free(hostApis);
+
+        return BA_CONTINUE;
+
+    }
+    case REQ_QUERY_DEFAULT_HOST_API: {
+        int hostApiCount = 1;
+        queryHostApiRep_t reply = { 0 };
+
+        fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
+
+        // ask port audio for the default host API
+        //      if the default host API cannot be queried this is a fatal case
+        PaHostApiIndex hostApiIndex = Pa_GetDefaultHostApi();
+        if (hostApiIndex < 0) {
+            fprintf(stderr, BA_PORTAUDIO_ERROR);
+            return BA_ERROR_FATAL;
+        }
+        
+        // fprintf(stderr, "%d host apis\n", hostApiCount);
+        const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+            calloc(hostApiCount, sizeof(PaHostApiIndex*));
+        const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(hostApiIndex);
+        *(hostApis + 0) = hinfo;
+        reply.hostApiCount = hostApiCount;
+        reply.hostApis = hostApis;
+
+        queryHostApisReply(rmsg, wbuf, &reply);
+        free(hostApis);
+
+        return BA_CONTINUE;
+
+    }
+    case REQ_QUERY_DEVICES_FOR_HOST_API: {
+        // [WO] BA_BUFLEN overflow risk (variable length)
+
+        int hostApiIdx = 0;
+        int replySizeEstimate = 0;
+        queryDeviceRep_t reply = {0};
+
+        parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
+
+        fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
+        fprintf(stderr, "query devices for: %d\n", hostApiIdx);
+
+        // Get the Host API Info Struct
+        //      if this fails, then the index supplied is invalid so
+        //      we send the bad reply back to the client
+        const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
+        if (hostApi == NULL) {
+            fprintf(stderr, "\e[31mgiven host api index returned NULL hostapi info struct must be invalid.\e[0m\n");
+            queryDevicesBadReply(rmsg, wbuf);
+            return BA_CONTINUE;
+        }
+        reply.hostApiIdx = hostApiIdx;
+        reply.deviceIdxes = (int*)
+            calloc(hostApi->deviceCount, sizeof(int));
+        reply.devices = (const PaDeviceInfo**)
+            calloc(hostApi->deviceCount, sizeof(PaDeviceInfo*));
+        reply.deviceCount = hostApi->deviceCount;
+        for (int i = 0; i < hostApi->deviceCount; i++) {
+            PaDeviceIndex deviceIdx     = Pa_HostApiDeviceIndexToDeviceIndex(hostApiIdx, i);
+            const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
+            *(reply.deviceIdxes + i)    = deviceIdx;
+            *(reply.devices + i)        = device;
+            /*
+            fprintf(stderr, "host device idx: %d, global device idx: %d\n",
+                i, deviceIdx);
+            */
+        }
+        // 4 32 4 4 8 = 52 bytes per device
+        // we should probably check the buffer length here & scale it if
+        //      necessary
+        //      Im thinking an exponentially bounded growth
+        //          (double it until some max)
+        //      figure out the maximum number of host APIs
+        //          (no idea what this is)
+        replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
+        fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+        if (replySizeEstimate >= BA_BUFLEN) {
+            fprintf(stderr, "message overflow risk\n");
+        } // [WO] for now, this will just whine into stderr
+
+        queryDevicesReply(rmsg, wbuf, &reply);
+
+        free(reply.deviceIdxes);
+        free(reply.devices);
+
         return BA_CONTINUE;
     }
-    return BA_CONTINUE;
+    case KILL: {
+
+        return BA_CONTINUE;
+
+    }
+    default: {
+        fprintf(stderr, BA_INVALID_REQUEST_TYPE);
+        return BA_CONTINUE;
+    }}
 }
 
 
