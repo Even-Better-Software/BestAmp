@@ -41,17 +41,6 @@ typedef enum BA_MESSAGE_TYPES {
 } messageType_t;
 
 
-/*[WO] can I make GCC happy?*/
-typedef enum BA_REQ_MESSAGE_TYPES {
-        REQ_KILL                        = KILL,
-        REQ_UPDATE_PREFS                = UPDATE_PREFS,
-        REQ_UPDATE_AMP_VALS             = UPDATE_AMP_VALS,
-        REQ_QUERY_HOST_APIS             = QUERY_HOST_APIS,
-        REQ_QUERY_DEFAULT_HOST_API      = QUERY_DEFAULT_HOST_API,
-        REQ_QUERY_DEVICES_FOR_HOST_API  = QUERY_DEVICES_FOR_HOST_API
-} reqMessageType_t;
-
-
 typedef struct BA_MSG {
     messageType_t type;
     int length;         // uint32_t (fixed width)

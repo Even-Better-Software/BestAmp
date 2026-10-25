@@ -38,8 +38,8 @@ int processRequest(appInfo_t* app,
     // A valid request message
     // [WO] longterm -> move these to message handler functions
     //      move the implementations for each message type to their own function
-    switch ((reqMessageType_t)msg->type) {
-    case REQ_UPDATE_PREFS: {
+    switch (msg->type) {
+    case UPDATE_PREFS: {
         fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
         // Parse prefs from message
         baPrefs_t pTemp;
@@ -134,7 +134,7 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
 
     }
-    case REQ_UPDATE_AMP_VALS: {
+    case UPDATE_AMP_VALS: {
         fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
         ampValues_t avTemp;
         initAmpValues(&avTemp);
@@ -170,7 +170,7 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
 
     }
-    case REQ_QUERY_HOST_APIS: {
+    case QUERY_HOST_APIS: {
         // [WO] BA_BUFLEN overflow risk (variable length)
 
         int replySizeEstimate = 0;
@@ -211,7 +211,7 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
 
     }
-    case REQ_QUERY_DEFAULT_HOST_API: {
+    case QUERY_DEFAULT_HOST_API: {
         int hostApiCount = 1;
         queryHostApiRep_t reply = { 0 };
 
@@ -239,7 +239,7 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
 
     }
-    case REQ_QUERY_DEVICES_FOR_HOST_API: {
+    case QUERY_DEVICES_FOR_HOST_API: {
         // [WO] BA_BUFLEN overflow risk (variable length)
 
         int hostApiIdx = 0;
@@ -297,7 +297,6 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
     }
     case KILL: {
-
         return BA_CONTINUE;
 
     }
