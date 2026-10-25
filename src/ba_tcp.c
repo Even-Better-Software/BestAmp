@@ -39,7 +39,7 @@ int processRequest(appInfo_t* app,
     // [WO] longterm -> move these to message handler functions
     //      move the implementations for each message type to their own function
     if (msg->type >= KILL && msg->type <= QUERY_DEVICES_FOR_HOST_API) {
-        switch (msg->type) {
+        switch ((reqMessageType_t)msg->type) {
         case UPDATE_PREFS: {
             fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
             // Parse prefs from message
