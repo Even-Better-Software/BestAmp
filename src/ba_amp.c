@@ -90,8 +90,9 @@ void setAmpGain(ampValues_t* a, int gainValue)
     if (testAmpValue(gainValue)) {
         a->gain = gainValue;
     }
-    else
+    else {
         a->gain = BA_DIAL_MIN;
+    }
 }
 
 
@@ -100,8 +101,9 @@ void setAmpBass(ampValues_t* a, int bassValue)
     if (testAmpValue(bassValue)) {
         a->bass = bassValue;
     }
-    else
+    else {
         a->bass = BA_DIAL_MIN;
+    }
 }
 
 
@@ -110,8 +112,9 @@ void setAmpTreble(ampValues_t* a, int trebleValue)
     if (testAmpValue(trebleValue)) {
         a->treble = trebleValue;
     }
-    else
+    else {
         a->treble = BA_DIAL_MIN;
+    }
 }
 
 
@@ -119,7 +122,8 @@ void setAmpPower(ampValues_t* a, int powerValue)
 {
     if (testAmpValue(powerValue))
         a->power = powerValue;
-    else
+    else {
         a->power = BA_DIAL_MIN;
+    }
 }
 

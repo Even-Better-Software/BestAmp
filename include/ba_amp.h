@@ -4,7 +4,7 @@
 #include "ba_dsp.h"
 
 
-#define BA_DIAL_MIN (1)
+#define BA_DIAL_MIN (0)
 #define BA_DIAL_MAX (10)
 
 
@@ -25,10 +25,14 @@ typedef struct BA_AMP_VOICE {
 
 
 typedef struct BA_AMP_VALUES {
-    int gain;           // 1-10, as per my amp
-    int bass;           // 1-10, as per my amp
-    int treble;         // 1-10, as per my amp
-    int power;          // 1-10, as per my amp
+    int gain;           // 0-10, as per my amp
+    int bass;           // 0-10, as per my amp
+    int treble;         // 0-10, as per my amp
+    int power;          // 0-10, as per my amp
+    float gainDb;
+    float bassDb;
+    float trebleDb;
+    float powerDb;
     ampVoiceType_t voice;
     biQuadFilter_t bqf_bass;
     biQuadFilter_t bqf_treble;
