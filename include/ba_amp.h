@@ -2,14 +2,26 @@
 #define BA_AMP
 
 /**
+General db interpretation:
 
+norm = dialValue/dialMax
+targetDb = dbmin + norm*(dbMax -dbMin)
+linearMult = 10^(targetDb / 20)
+
+
+https://staff.fnwi.uva.nl/r.vandenboomgaard/SignalProcessing/SystemsSignals/decibels.html
+    linearMult from db (for amplitude aka sample)
 */
+
+#include <math.h>
 
 #include "ba_dsp.h"
 
 
 #define BA_DIAL_MIN (0)
 #define BA_DIAL_MAX (10)
+
+#define BA_VTOM(value) (powf)((10),((value)/(20.0f)))
 
 
 typedef enum BA_AMP_VOICES {

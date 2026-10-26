@@ -122,7 +122,6 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
     int t_treble;
     int t_power;
     int t_raw_voice;
-    ampVoiceType_t t_voice;
 
     memcpy(&t_gain, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     t_gain = ntohl(t_gain);

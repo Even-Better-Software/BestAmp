@@ -24,14 +24,14 @@ int bestAmpCB(
     float y;
     for (unsigned int i = 0; i < framesPerBuffer * appInfo->baPrefs.inChanneln; i++)
     {
-        y = appInfo->ampValues.gain * *in;         // pre-amplification
+        y = appInfo->ampValues.gainMult * *in;     // pre-amplification
 
         y = biQuadFilter_process(
             &appInfo->ampValues.bqf_bass, y);      // execute bass biQuad filter process
         y = biQuadFilter_process(
             &appInfo->ampValues.bqf_treble, y);    // execute treble biQuad filter process
 
-        y = appInfo->ampValues.power * y;          // power-amplification
+        y = appInfo->ampValues.powerMult * y;      // power-amplification
 
         *out = y; // write the processed sample to the output buffer
         

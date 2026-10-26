@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include "ba_common.h"
 #include "ba_amp.h"
@@ -108,6 +109,7 @@ void setAmpGain(ampValues_t* a, int gainValue)
     else {
         a->gain = BA_DIAL_MIN;
     }
+    a->gainMult = BA_VTOM(gainValue);
 }
 
 
@@ -119,6 +121,7 @@ void setAmpBass(ampValues_t* a, int bassValue)
     else {
         a->bass = BA_DIAL_MIN;
     }
+    a->bassMult = BA_VTOM(bassValue);
 }
 
 
@@ -130,6 +133,7 @@ void setAmpTreble(ampValues_t* a, int trebleValue)
     else {
         a->treble = BA_DIAL_MIN;
     }
+    a->trebleMult = BA_VTOM(trebleValue);
 }
 
 
@@ -140,5 +144,6 @@ void setAmpPower(ampValues_t* a, int powerValue)
     else {
         a->power = BA_DIAL_MIN;
     }
+    a->powerMult = BA_VTOM(powerValue);
 }
 
