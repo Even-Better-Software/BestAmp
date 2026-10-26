@@ -86,8 +86,7 @@ int processRequest(appInfo_t* app,
         }
         // Format supported, so pTemp becomes app->prefs
         app->baPrefs = pTemp;
-        ampVoiceType_t voice = itoavt(app->ampValues.voice);
-        ampVoice_t cVoice = getAmpVoice(voice);
+        ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
 
         // [WO] should be able to see the new amp voice name
         fprintf(stderr, "AMP VOICE: %s\n", cVoice.name);
@@ -142,8 +141,7 @@ int processRequest(appInfo_t* app,
         printAmpValues(&avTemp);
         // this function handles setting this to the default voice if
         //      the supplied voice is outside of the valid range of voices
-        ampVoiceType_t voice = itoavt(avTemp.voice);
-        ampVoice_t cVoice = getAmpVoice(voice);
+        ampVoice_t cVoice = getAmpVoice(avTemp.voice);
 
         // [WO] should be able to see the new amp voice name
         printAmpVoice(&cVoice);
