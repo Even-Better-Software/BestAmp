@@ -32,6 +32,12 @@ void initAmpValues(ampValues_t* a)
     a->treble = 1;
     a->power = 1;
     a->voice = DEFAULT;
+
+    a->gainMult   = 1.0f;
+    a->bassMult   = 1.0f;
+    a->trebleMult = 1.0f;
+    a->powerMult  = 1.0f;
+
     biQuadFilter_init(&a->bqf_bass);
     biQuadFilter_init(&a->bqf_treble);
 }

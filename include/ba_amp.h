@@ -1,6 +1,10 @@
 #ifndef BA_AMP
 #define BA_AMP
 
+/**
+
+*/
+
 #include "ba_dsp.h"
 
 
@@ -29,10 +33,10 @@ typedef struct BA_AMP_VALUES {
     int bass;           // 0-10, as per my amp
     int treble;         // 0-10, as per my amp
     int power;          // 0-10, as per my amp
-    float gainDb;
-    float bassDb;
-    float trebleDb;
-    float powerDb;
+    float gainDb;   float gainMult;
+    float bassDb;   float bassMult;
+    float trebleDb; float trebleMult;
+    float powerDb;  float powerMult;
     ampVoiceType_t voice;
     biQuadFilter_t bqf_bass;
     biQuadFilter_t bqf_treble;
