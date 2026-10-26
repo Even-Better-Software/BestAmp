@@ -147,8 +147,7 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
     memcpy(&t_raw_voice, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
     t_raw_voice = ntohl(t_raw_voice);
     t_data_off += BA_NUMERIC_FIELD_B;
-    t_voice = itoavt(t_raw_voice);
-    ampValues->voice = t_voice; // [WO] a bit convoluted tbh
+    setAmpVoiceType(ampValues, t_raw_voice);
  
     fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }

@@ -57,6 +57,8 @@ ampVoiceType_t itoavt(int raw) {
 }
 
 
+
+
 void printAmpVoice(ampVoice_t* v)
 {
     fprintf(stderr, "AmpVoice: {" \
@@ -82,6 +84,13 @@ ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx)
     if (voiceTypeIdx <= 0 || voiceTypeIdx >= BA_AMP_VOICE_COUNT)
         return voices[DEFAULT];
     return voices[voiceTypeIdx];
+}
+
+
+void setAmpVoiceType(ampValues_t* a, int rawVoice)
+{
+    ampVoiceType_t voice = itoavt(rawVoice);
+    a->voice = voice;
 }
 
 

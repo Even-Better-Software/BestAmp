@@ -70,7 +70,17 @@ ampVoiceType_t itoavt(int raw);
 
 void printAmpVoice(ampVoice_t* v);
 void printAmpVoices();
+
+/**
+Using a `ampVoiceType_t` voice type value, returns the `ampVoice_t` struct
+for that voice.
+*/
 ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx);
+
+/**
+On the 
+*/
+void setAmpVoiceType(ampValues_t* a, int rawVoice);
 
 /**
 Sets the value of the `gain` property of the passed `ampValues_t` `a` to be
