@@ -2,6 +2,24 @@
 #define BA_AMP
 
 /**
+Ranges:
+
+pre-amp
+dBmin -> 0
+dBmax
+from zero to some max
+
+power
+dBmin -> -60dB, something quite
+dBmax -> 0dB (unmodified full strength signal)
+
+biQuadFilter dbs
+dBmin -> abs(myArbitraryValue)
+dBmax -> abs(myArbitraryValue)
+perhaps 12dB (-12dB, 12dB)
+
+
+
 General db interpretation:
 
 norm = dialValue/dialMax
