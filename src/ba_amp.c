@@ -128,7 +128,7 @@ void setAmpGain(ampValues_t* a, int gainValue)
     a->gainDb   = v.minGain_db + ( n * ( v.maxGain_db - v.minGain_db ));
     */
     a->gainDb = BA_ITODB(gainValue, v.maxGain_db, v.minGain_db);
-    a->gainMult = BA_VTOM(gainValue);
+    a->gainMult = BA_VTOM(a->gainDb);
 }
 
 
@@ -143,7 +143,7 @@ void setAmpBass(ampValues_t* a, int bassValue)
     ampVoice_t v = getAmpVoice(a->voice);
 
     a->bassDb = BA_ITODB_RANGE(bassValue, v.bassRange_db);
-    a->bassMult = BA_VTOM(bassValue);
+    a->bassMult = BA_VTOM(a->bassDb);
 }
 
 
@@ -158,7 +158,7 @@ void setAmpTreble(ampValues_t* a, int trebleValue)
     ampVoice_t v = getAmpVoice(a->voice);
 
     a->trebleDb = BA_ITODB_RANGE(trebleValue, v.trebRange_db);
-    a->trebleMult = BA_VTOM(trebleValue);
+    a->trebleMult = BA_VTOM(a->trebleDb);
 }
 
 
@@ -172,6 +172,6 @@ void setAmpPower(ampValues_t* a, int powerValue)
     ampVoice_t v = getAmpVoice(a->voice);
 
     a->powerDb = BA_ITODB(powerValue, v.maxPower_db, v.minPower_db);
-    a->powerMult = BA_VTOM(powerValue);
+    a->powerMult = BA_VTOM(a->powerDb);
 }
 
