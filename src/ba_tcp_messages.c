@@ -1,5 +1,4 @@
 #include "ba_tcp_messages.h"
-#include "ba_amp.h"
 
 
 void printMessage(message_t* msg)
@@ -126,27 +125,30 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
     memcpy(&t_gain, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     t_gain = ntohl(t_gain);
     t_data_off += BA_NUMERIC_FIELD_B;
-    setAmpGain(ampValues, t_gain);
 
     memcpy(&t_bass, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
     t_bass = ntohl(t_bass);
     t_data_off += BA_NUMERIC_FIELD_B;
-    setAmpBass(ampValues, t_bass);
 
     memcpy(&t_treble, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
     t_treble = ntohl(t_treble);
     t_data_off += BA_NUMERIC_FIELD_B;
-    setAmpTreble(ampValues, t_treble);
 
     memcpy(&t_power, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
     t_power = ntohl(t_power);
     t_data_off += BA_NUMERIC_FIELD_B; 
-    setAmpPower(ampValues, t_power);
 
     memcpy(&t_raw_voice, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
     t_raw_voice = ntohl(t_raw_voice);
     t_data_off += BA_NUMERIC_FIELD_B;
+
+    // [WO] set the voice first as voice struct properties are used to
+    // determine the actual db ranges of the dial values
     setAmpVoiceType(ampValues, t_raw_voice);
+    setAmpGain(ampValues, t_gain);
+    setAmpBass(ampValues, t_bass);
+    setAmpTreble(ampValues, t_treble);
+    setAmpPower(ampValues, t_power);
  
     fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }

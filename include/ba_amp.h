@@ -39,7 +39,12 @@ https://staff.fnwi.uva.nl/r.vandenboomgaard/SignalProcessing/SystemsSignals/deci
 #define BA_DIAL_MIN (0)
 #define BA_DIAL_MAX (10)
 
-#define BA_VTOM(value) (powf)((10),((value)/(20.0f)))
+#define BA_VTOM(value) \
+    (powf)((10),((value)/(20.0f)))
+#define BA_ITODB(value, dbMax, dbMin) \
+    ((dbMin) + (((1.0f) * (value) / (BA_DIAL_MAX)) * ((dbMax) - (dbMin))))
+#define BA_ITODB_RANGE(value, dbR) \
+    (((-1)*(dbR)) + (((1.0f) * (value) / (BA_DIAL_MAX)) * ((dbR) - ((-1)*(dbR)))))
 
 
 typedef enum BA_AMP_VOICES {
@@ -48,10 +53,24 @@ typedef enum BA_AMP_VOICES {
 } ampVoiceType_t;
 
 
+/**
+additional properties
+    preamp max dB
+    power suppression min dB
+    
+    EQ range
+    eqRangedB (can just calc this on the fly)
+        min = -1 * eqRangedB
+        max = 1 * eqRangedB
+*/
 typedef struct BA_AMP_VOICE {
     char* name;
     float bassCornerFreq;
     float trebleCornerFreq;
+    float maxGain_db, minGain_db;
+    float maxPower_db, minPower_db;
+    float bassRange_db;
+    float trebRange_db;
 } ampVoice_t;
 
 

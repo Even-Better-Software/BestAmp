@@ -9,12 +9,24 @@ const ampVoice_t voices[] = {
     {  
         .name               = "default",
         .bassCornerFreq     = 220.0f,
-        .trebleCornerFreq   = 4800.0f
+        .trebleCornerFreq   = 4800.0f,
+        .maxGain_db         = 25.0f,
+        .minGain_db         = 0.0f,
+        .maxPower_db        = 0.0f,
+        .minPower_db        = -60.0f,
+        .bassRange_db       = 12.0f,
+        .trebRange_db       = 12.0f
     },
     {
         .name               = "test",
         .bassCornerFreq     = 200.0f,
-        .trebleCornerFreq   = 5000.0f
+        .trebleCornerFreq   = 5000.0f,
+        .maxGain_db         = 25.0f,
+        .minGain_db         = 0.0f,
+        .maxPower_db        = 0.0f,
+        .minPower_db        = -60.0f,
+        .bassRange_db       = 12.0f,
+        .trebRange_db       = 12.0f
     }
 };
 
@@ -109,6 +121,13 @@ void setAmpGain(ampValues_t* a, int gainValue)
     else {
         a->gain = BA_DIAL_MIN;
     }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    /*
+    float n     = ( 1.0f * gainValue ) / BA_DIAL_MAX;
+    a->gainDb   = v.minGain_db + ( n * ( v.maxGain_db - v.minGain_db ));
+    */
+    a->gainDb = BA_ITODB(gainValue, v.maxGain_db, v.minGain_db);
     a->gainMult = BA_VTOM(gainValue);
 }
 
@@ -121,6 +140,9 @@ void setAmpBass(ampValues_t* a, int bassValue)
     else {
         a->bass = BA_DIAL_MIN;
     }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    a->bassDb = BA_ITODB_RANGE(bassValue, v.bassRange_db);
     a->bassMult = BA_VTOM(bassValue);
 }
 
@@ -133,6 +155,9 @@ void setAmpTreble(ampValues_t* a, int trebleValue)
     else {
         a->treble = BA_DIAL_MIN;
     }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    a->trebleDb = BA_ITODB_RANGE(trebleValue, v.trebRange_db);
     a->trebleMult = BA_VTOM(trebleValue);
 }
 
@@ -144,6 +169,9 @@ void setAmpPower(ampValues_t* a, int powerValue)
     else {
         a->power = BA_DIAL_MIN;
     }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    a->powerDb = BA_ITODB(powerValue, v.maxPower_db, v.minPower_db);
     a->powerMult = BA_VTOM(powerValue);
 }
 

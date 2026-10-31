@@ -94,12 +94,12 @@ int processRequest(appInfo_t* app,
         // Initial biquad calculation
         biQuadFilter_lowShelf(
             &app->ampValues.bqf_bass,
-            (float)app->ampValues.bass,
+            (float)app->ampValues.bassDb,
             (float)app->baPrefs.sampleRate,
             cVoice.bassCornerFreq);
         biQuadFilter_highShelf(
             &app->ampValues.bqf_treble,
-            (float)app->ampValues.treble,
+            (float)app->ampValues.trebleDb,
             (float)app->baPrefs.sampleRate,
             cVoice.trebleCornerFreq);
 
@@ -149,13 +149,12 @@ int processRequest(appInfo_t* app,
         // recalculate biquads
         biQuadFilter_lowShelf(
             &avTemp.bqf_bass,
-            (float)avTemp.bass, // I don't know that this makes sense to do, the formulae call for dbGain values
-                                    // we are still treating the user supplied dial value as a desired dbGain for whatever dial
+            (float)avTemp.bassDb,
             (float)app->baPrefs.sampleRate,
             cVoice.bassCornerFreq);
         biQuadFilter_highShelf(
             &avTemp.bqf_treble,
-            (float)avTemp.treble,
+            (float)avTemp.trebleDb,
             (float)app->baPrefs.sampleRate,
             cVoice.trebleCornerFreq);
         
