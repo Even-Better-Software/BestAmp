@@ -10,12 +10,12 @@ const ampVoice_t voices[] = {
         .name               = "default",
         .bassCornerFreq     = 220.0f,
         .trebleCornerFreq   = 4800.0f,
-        .maxGain_db         = 25.0f,
+        .maxGain_db         = 50.0f,
         .minGain_db         = 0.0f,
-        .maxPower_db        = 0.0f,
-        .minPower_db        = -60.0f,
-        .bassRange_db       = 12.0f,
-        .trebRange_db       = 12.0f
+        .maxPower_db        = 30.0f,
+        .minPower_db        = 0.0f,
+        .bassRange_db       = 20.0f,
+        .trebRange_db       = 20.0f
     },
     {
         .name               = "test",
