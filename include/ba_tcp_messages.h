@@ -88,7 +88,7 @@ void parseDeviceQueryFromMsg(int* hostApi, message_t* msg, char* rbuf);
 
 /**
 Writes bad message accounting into `rpmsg`
-Writes bad message into `rpmsg`
+Writes bad message into `wbuf`
 */
 void badMessageReply(message_t* rpmsg, char* wbuf);
 

@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include "ba_common.h"
 #include "ba_amp.h"
@@ -8,12 +9,24 @@ const ampVoice_t voices[] = {
     {  
         .name               = "default",
         .bassCornerFreq     = 220.0f,
-        .trebleCornerFreq   = 4800.0f
+        .trebleCornerFreq   = 4800.0f,
+        .maxGain_db         = 50.0f,
+        .minGain_db         = 0.0f,
+        .maxPower_db        = 30.0f,
+        .minPower_db        = 0.0f,
+        .bassRange_db       = 20.0f,
+        .trebRange_db       = 20.0f
     },
     {
         .name               = "test",
         .bassCornerFreq     = 200.0f,
-        .trebleCornerFreq   = 5000.0f
+        .trebleCornerFreq   = 5000.0f,
+        .maxGain_db         = 25.0f,
+        .minGain_db         = 0.0f,
+        .maxPower_db        = 0.0f,
+        .minPower_db        = -60.0f,
+        .bassRange_db       = 12.0f,
+        .trebRange_db       = 12.0f
     }
 };
 
@@ -32,6 +45,12 @@ void initAmpValues(ampValues_t* a)
     a->treble = 1;
     a->power = 1;
     a->voice = DEFAULT;
+
+    a->gainMult   = 1.0f;
+    a->bassMult   = 1.0f;
+    a->trebleMult = 1.0f;
+    a->powerMult  = 1.0f;
+
     biQuadFilter_init(&a->bqf_bass);
     biQuadFilter_init(&a->bqf_treble);
 }
@@ -55,6 +74,8 @@ ampVoiceType_t itoavt(int raw) {
         }
     }
 }
+
+
 
 
 void printAmpVoice(ampVoice_t* v)
@@ -85,13 +106,29 @@ ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx)
 }
 
 
+void setAmpVoiceType(ampValues_t* a, int rawVoice)
+{
+    ampVoiceType_t voice = itoavt(rawVoice);
+    a->voice = voice;
+}
+
+
 void setAmpGain(ampValues_t* a, int gainValue)
 {
     if (testAmpValue(gainValue)) {
         a->gain = gainValue;
     }
-    else
+    else {
         a->gain = BA_DIAL_MIN;
+    }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    /*
+    float n     = ( 1.0f * gainValue ) / BA_DIAL_MAX;
+    a->gainDb   = v.minGain_db + ( n * ( v.maxGain_db - v.minGain_db ));
+    */
+    a->gainDb = BA_ITODB(gainValue, v.maxGain_db, v.minGain_db);
+    a->gainMult = BA_VTOM(a->gainDb);
 }
 
 
@@ -100,8 +137,13 @@ void setAmpBass(ampValues_t* a, int bassValue)
     if (testAmpValue(bassValue)) {
         a->bass = bassValue;
     }
-    else
+    else {
         a->bass = BA_DIAL_MIN;
+    }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    a->bassDb = BA_ITODB_RANGE(bassValue, v.bassRange_db);
+    a->bassMult = BA_VTOM(a->bassDb);
 }
 
 
@@ -110,8 +152,13 @@ void setAmpTreble(ampValues_t* a, int trebleValue)
     if (testAmpValue(trebleValue)) {
         a->treble = trebleValue;
     }
-    else
+    else {
         a->treble = BA_DIAL_MIN;
+    }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    a->trebleDb = BA_ITODB_RANGE(trebleValue, v.trebRange_db);
+    a->trebleMult = BA_VTOM(a->trebleDb);
 }
 
 
@@ -119,7 +166,12 @@ void setAmpPower(ampValues_t* a, int powerValue)
 {
     if (testAmpValue(powerValue))
         a->power = powerValue;
-    else
+    else {
         a->power = BA_DIAL_MIN;
+    }
+    ampVoice_t v = getAmpVoice(a->voice);
+
+    a->powerDb = BA_ITODB(powerValue, v.maxPower_db, v.minPower_db);
+    a->powerMult = BA_VTOM(a->powerDb);
 }
 

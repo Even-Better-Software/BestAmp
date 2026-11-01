@@ -116,31 +116,39 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
         fprintf(stderr, "\e[31mupdate amp values content length should be 20 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
+    int t_gain;
+    int t_bass;
+    int t_treble;
+    int t_power;
+    int t_raw_voice;
 
-    memcpy(&ampValues->gain, (
-        rbuf + t_data_off
-    ), sizeof(ampValues->gain));
-    ampValues->gain = ntohl(ampValues->gain);
+    memcpy(&t_gain, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
+    t_gain = ntohl(t_gain);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&ampValues->bass, (
-        rbuf + (t_data_off += sizeof(ampValues->gain))
-    ), sizeof(ampValues->bass));
-    ampValues->bass = ntohl(ampValues->bass);
+    memcpy(&t_bass, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
+    t_bass = ntohl(t_bass);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&ampValues->treble, (
-        rbuf + (t_data_off += sizeof(ampValues->bass))
-    ), sizeof(ampValues->treble));
-    ampValues->treble = ntohl(ampValues->treble);
+    memcpy(&t_treble, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
+    t_treble = ntohl(t_treble);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&ampValues->power, (
-        rbuf + (t_data_off += sizeof(ampValues->treble))
-    ), sizeof(ampValues->power));
-    ampValues->power = ntohl(ampValues->power);
+    memcpy(&t_power, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
+    t_power = ntohl(t_power);
+    t_data_off += BA_NUMERIC_FIELD_B; 
 
-    memcpy(&ampValues->voice, (
-        rbuf + (t_data_off += sizeof(ampValues->power))
-    ), sizeof(ampValues->voice));
-    ampValues->voice = ntohl(ampValues->voice);
+    memcpy(&t_raw_voice, rbuf + t_data_off, BA_NUMERIC_FIELD_B);
+    t_raw_voice = ntohl(t_raw_voice);
+    t_data_off += BA_NUMERIC_FIELD_B;
+
+    // [WO] set the voice first as voice struct properties are used to
+    // determine the actual db ranges of the dial values
+    setAmpVoiceType(ampValues, t_raw_voice);
+    setAmpGain(ampValues, t_gain);
+    setAmpBass(ampValues, t_bass);
+    setAmpTreble(ampValues, t_treble);
+    setAmpPower(ampValues, t_power);
  
     fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }
