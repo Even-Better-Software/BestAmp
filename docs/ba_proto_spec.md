@@ -193,7 +193,7 @@ type, 4B    content length, 4B
 The reply shall be of the following byte-structure:
 ```
 0x000003EB       0x0000002C
-type (1004), 4B  content length, 4B
+type (1003), 4B  content length, 4B
 
 0xFFFFFFFF    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 host idx, 4B  host human name, 32B
