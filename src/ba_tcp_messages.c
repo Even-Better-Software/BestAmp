@@ -9,21 +9,12 @@ void printMessage(message_t* msg)
 
 int parseMessage(message_t* pMsg, char* msg)
 {
-    // Byte 0 -> message type
-    //      store in `type`
-    // Byte 1 -> length of the message
-    //      store in `length`
-    // Byte 2 -> from this point onwards, its message specific content
-    //      advance the pointer by the `length` & then
-    //      assign to the `data` field of the `message_t` struct
-
-    // as per our protocol this never changes literally interpret this as an int
-    int typeByte = 0;
-    memcpy(&typeByte, msg, sizeof(typeByte));
+    int32_t typeByte = 0;
+    memcpy(&typeByte, msg, BA_NUMERIC_FIELD_B);
     typeByte = ntohl(typeByte);
-    // as per out protocol this never changes literally interpret this as an int
-    int lengthByte = 0;
-    memcpy(&lengthByte, (msg + sizeof(typeByte)), sizeof(lengthByte));
+
+    int32_t lengthByte = 0;
+    memcpy(&lengthByte, (msg + BA_NUMERIC_FIELD_B), BA_NUMERIC_FIELD_B);
     lengthByte = ntohl(lengthByte);
 
     switch (typeByte) {
@@ -52,10 +43,8 @@ int parseMessage(message_t* pMsg, char* msg)
     if (lengthByte == 0) {
         pMsg->length = 0;
     } else if (lengthByte > 0) {
-        // this many bytes should be in the message
         pMsg->length = lengthByte;
-        // do I need to advance twice or just once cause I already advanced?
-        pMsg->data_off = sizeof(typeByte) + sizeof(lengthByte);
+        pMsg->data_off = BA_HEADER_SIZE_B;
     }
 
     return 0;
@@ -69,42 +58,35 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 
     int t_data_off = msg->data_off;
 
-    memcpy(&prefs->hostApiIdx, (
-        rbuf + t_data_off
-    ), sizeof(prefs->hostApiIdx));
+    memcpy(&prefs->hostApiIdx, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     prefs->hostApiIdx = ntohl(prefs->hostApiIdx);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&prefs->inDevIdx, (
-        rbuf + (t_data_off += sizeof(prefs->hostApiIdx))
-    ), sizeof(prefs->inDevIdx));
+    memcpy(&prefs->inDevIdx, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     prefs->inDevIdx = ntohl(prefs->inDevIdx);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&prefs->outDevIdx, (
-        rbuf + (t_data_off += sizeof(prefs->inDevIdx))
-    ), sizeof(prefs->outDevIdx));
+    memcpy(&prefs->outDevIdx, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     prefs->outDevIdx = ntohl(prefs->outDevIdx);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&prefs->inChanneln, (
-        rbuf + (t_data_off += sizeof(prefs->outDevIdx))
-    ), sizeof(prefs->inChanneln));
+    memcpy(&prefs->inChanneln, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     prefs->inChanneln = ntohl(prefs->inChanneln);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&prefs->outChanneln, (
-        rbuf + (t_data_off += sizeof(prefs->inChanneln))
-    ), sizeof(prefs->outChanneln));
+    memcpy(&prefs->outChanneln, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     prefs->outChanneln = ntohl(prefs->outChanneln);
+    t_data_off += BA_NUMERIC_FIELD_B;
 
-    memcpy(&prefs->framesPerBuffer, (
-        rbuf + (t_data_off += sizeof(prefs->outChanneln))
-    ), sizeof(prefs->framesPerBuffer));
+    memcpy(&prefs->framesPerBuffer, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     prefs->framesPerBuffer = ntohl(prefs->framesPerBuffer);
+    t_data_off += BA_NUMERIC_FIELD_B;
  
-    long long tmpi;
-    memcpy(&tmpi, rbuf + (
-        t_data_off += sizeof(prefs->framesPerBuffer)
-    ), sizeof(tmpi));
-    tmpi = ntohll(tmpi);   // cheat to get the correct byte-ordering
+    int64_t tmpi;
+    memcpy(&tmpi, (rbuf + t_data_off), BA_DOUBLE_FIELD_B);
+    tmpi = ntohll(tmpi);
     memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
+    t_data_off += BA_DOUBLE_FIELD_B;
      
     fprintf(stdout, BA_INFO " parsed updated prefs\n"); 
 }
@@ -116,11 +98,11 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
         fprintf(stderr, "\e[31mupdate amp values content length should be 20 bytes.\e[0m\n");
 
     int t_data_off = msg->data_off;
-    int t_gain;
-    int t_bass;
-    int t_treble;
-    int t_power;
-    int t_raw_voice;
+    int32_t t_gain;
+    int32_t t_bass;
+    int32_t t_treble;
+    int32_t t_power;
+    int32_t t_raw_voice;
 
     memcpy(&t_gain, (rbuf + t_data_off), BA_NUMERIC_FIELD_B);
     t_gain = ntohl(t_gain);
@@ -160,10 +142,10 @@ void parseDeviceQueryFromMsg(int* hostApi, message_t* msg, char* rbuf)
         fprintf(stderr, "\e[31mquery host apis content length should be 4 bytes\e[0m\n");
 
     int t_data_off = msg->data_off;
-    int t = 0;
+    int32_t t = 0;
     memcpy(&t, (
         rbuf + t_data_off
-    ), sizeof(int));
+    ), BA_NUMERIC_FIELD_B);
     *hostApi = ntohl(t);
 
     fprintf(stderr, BA_INFO " parsed device query\n");
@@ -176,12 +158,15 @@ void badMessageReply(message_t* rpmsg, char* wbuf)
         fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
-    int type    = rpmsg->type   = BAD;
-    int length  = rpmsg->length = 0;
-    int htype   = htonl(type);
-    int hlength = htonl(length);
-    memcpy(wbuf, (void*)&htype, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, (void*)&hlength, BA_NUMERIC_FIELD_B);
+    int offset = 0;
+    int32_t type    = rpmsg->type   = BAD;
+    int32_t length  = rpmsg->length = 0;
+    int32_t htype   = htonl(type);
+    int32_t hlength = htonl(length);
+    memcpy(wbuf + offset, (void*)&htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, (void*)&hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
 }
 
 
@@ -191,10 +176,10 @@ void byeMessageReply(message_t* rpmsg, char* wbuf)
         fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
-    int type    = rpmsg->type   = BYE;
-    int length  = rpmsg->length = 0;
-    int htype   = htonl(type);
-    int hlength = htonl(length);
+    int32_t type    = rpmsg->type   = BYE;
+    int32_t length  = rpmsg->length = 0;
+    int32_t htype   = htonl(type);
+    int32_t hlength = htonl(length);
     memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
     memcpy(wbuf + BA_NUMERIC_FIELD_B, &hlength, BA_NUMERIC_FIELD_B);
 }
@@ -206,12 +191,15 @@ void genericOkReply(message_t* rpmsg, char* wbuf)
         fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
-    int type    = rpmsg->type   = OK;
-    int length  = rpmsg->length = 0;
-    int htype   = htonl(type);
-    int hlength = htonl(length);
-    memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, &hlength, BA_NUMERIC_FIELD_B);
+    int offset = 0;
+    int32_t type    = rpmsg->type   = OK;
+    int32_t length  = rpmsg->length = 0;
+    int32_t htype   = htonl(type);
+    int32_t hlength = htonl(length);
+    memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
 }
 
 
@@ -222,14 +210,18 @@ void updatePreferencesReply(
         fprintf(stderr, BA_WRITE_BUFFER_NULL);
         return;
     }
-    int type    = rpmsg->type   = UPDATE_PREFS_REPLY;
-    int length  = rpmsg->length = BA_NUMERIC_FIELD_B;
-    int htype   = htonl(type);
-    int hlength = htonl(length);
-    int hcode   = htonl(content->code);
-    memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + BA_NUMERIC_FIELD_B, &hlength, BA_NUMERIC_FIELD_B);
-    memcpy(wbuf + (2*BA_NUMERIC_FIELD_B), &hcode, BA_NUMERIC_FIELD_B);
+    int offset = 0;
+    int32_t type    = rpmsg->type   = UPDATE_PREFS_REPLY;
+    int32_t length  = rpmsg->length = BA_NUMERIC_FIELD_B;
+    int32_t htype   = htonl(type);
+    int32_t hlength = htonl(length);
+    int32_t hcode   = htonl(content->code);
+    memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hcode, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
 }
 
 
@@ -258,11 +250,11 @@ void queryHostApisReply(
         return;
     }
     int offset = 0;
-    int type = rpmsg->type = QUERY_HOST_APIS_REPLY;
-    int length = rpmsg->length = content->hostApiCount * 44;  // 4B id, 32B name
-
-    int htype = htonl(type);
-    int hlength = htonl(length);
+    int32_t type = rpmsg->type = QUERY_HOST_APIS_REPLY;
+    // 4B id, 32B name, 4B default in idx, 4B default out idx
+    int32_t length = rpmsg->length = content->hostApiCount * 44;
+    int32_t htype = htonl(type);
+    int32_t hlength = htonl(length);
 
     memcpy(wbuf, &htype, BA_NUMERIC_FIELD_B);
     offset += BA_NUMERIC_FIELD_B;
@@ -274,7 +266,7 @@ void queryHostApisReply(
     for (int i = 0; i < content->hostApiCount; i++) {
         const PaHostApiInfo* info = *(content->hostApis + i);
 
-        int hindex = htonl(i);
+        int32_t hindex = htonl(i);
         memcpy(wbuf + offset, &hindex, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
 
@@ -286,11 +278,11 @@ void queryHostApisReply(
             min(strlen(info->name) + 1, BA_SMALL_STR_FIELD_B)); // copy the 32 bytes of the name
         offset += BA_SMALL_STR_FIELD_B;
 
-        int hdefaultIDevIdx = htonl(info->defaultInputDevice);
+        int32_t hdefaultIDevIdx = htonl(info->defaultInputDevice);
         memcpy(wbuf + offset, &hdefaultIDevIdx, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
 
-        int hdefaultODevIdx = htonl(info->defaultOutputDevice);
+        int32_t hdefaultODevIdx = htonl(info->defaultOutputDevice);
         memcpy(wbuf + offset, &hdefaultODevIdx, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
     }
@@ -305,13 +297,11 @@ void queryDevicesReply(
         return;
     }
     int offset = 0;
-    int type = rpmsg->type = QUERY_DEVICES_REPLY;
+    int32_t type = rpmsg->type = QUERY_DEVICES_REPLY;
     // 4B idx, 32B name, 4B max in channel, 4B max out channel, 8B default sample rate
-    int length = rpmsg->length = content->deviceCount * 52;
-    // fprintf(stderr, "deviceCount: %d\n", content->deviceCount);
-
-    int htype = htonl(type);
-    int hlength = htonl(length);
+    int32_t length = rpmsg->length = content->deviceCount * 52;
+    int32_t htype = htonl(type);
+    int32_t hlength = htonl(length);
 
     memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
     offset += BA_NUMERIC_FIELD_B;
@@ -320,9 +310,9 @@ void queryDevicesReply(
 
     for (int i = 0; i < content->deviceCount; i++) {
         const PaDeviceInfo* info = *(content->devices + i);
-        int deviceGlobalIdx = *(content->deviceIdxes + i);
+        int32_t deviceGlobalIdx = *(content->deviceIdxes + i);
 
-        int hdeviceGlobalIdx = htonl(deviceGlobalIdx);
+        int32_t hdeviceGlobalIdx = htonl(deviceGlobalIdx);
         memcpy(wbuf + offset, &hdeviceGlobalIdx, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
 
@@ -330,15 +320,15 @@ void queryDevicesReply(
             min(strlen(info->name) + 1, BA_SMALL_STR_FIELD_B));
         offset += BA_SMALL_STR_FIELD_B;
 
-        int hdeviceMaxICh = htonl(info->maxInputChannels);
+        int32_t hdeviceMaxICh = htonl(info->maxInputChannels);
         memcpy(wbuf + offset, &hdeviceMaxICh, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
 
-        int hdeviceMaxOCh = htonl(info->maxOutputChannels);
+        int32_t hdeviceMaxOCh = htonl(info->maxOutputChannels);
         memcpy(wbuf + offset, &hdeviceMaxOCh, BA_NUMERIC_FIELD_B);
         offset += BA_NUMERIC_FIELD_B;
 
-        long long tmp = 0;
+        int64_t tmp = 0;
         memcpy(&tmp, &(info->defaultSampleRate), BA_DOUBLE_FIELD_B);
         tmp = htonll(tmp);
         memcpy(wbuf + offset, &tmp, BA_DOUBLE_FIELD_B);
@@ -354,13 +344,12 @@ void queryDevicesBadReply(
         return;
     }
     int offset = 0;
-    int type = rpmsg->type = QUERY_DEVICES_REPLY;
-    int length = rpmsg->length = 4;
-    int code = 1;
-
-    int htype = htonl(type);
-    int hlength = htonl(length);
-    int hcode = htonl(code);
+    int32_t type = rpmsg->type = QUERY_DEVICES_REPLY;
+    int32_t length = rpmsg->length = 4;
+    int32_t code = 1;
+    int32_t htype = htonl(type);
+    int32_t hlength = htonl(length);
+    int32_t hcode = htonl(code);
 
     memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
     offset += BA_NUMERIC_FIELD_B;
