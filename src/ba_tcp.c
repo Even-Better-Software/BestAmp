@@ -40,7 +40,8 @@ int processRequest(appInfo_t* app,
     //      move the implementations for each message type to their own function
     switch (msg->type) {
     case UPDATE_PREFS: {
-        fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
+        LINFO("%d update prefs message received.", msg->type);
+
         // Parse prefs from message
         baPrefs_t pTemp;
         updatePrefsRep_t reply = {0};

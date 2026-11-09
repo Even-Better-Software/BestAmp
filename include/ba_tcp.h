@@ -7,9 +7,9 @@
 #include <string.h>
 #include <portaudio.h>
 
+#include "ba_common.h"
 #include "ba_portaudio_helpers.h"
 #include "ba_portaudio_cb.h"
-#include "ba_common.h"
 #include "ba_prefs.h"
 #include "ba_amp.h"
 #include "ba_tcp_messages.h"

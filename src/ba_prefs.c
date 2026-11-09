@@ -14,7 +14,7 @@ void printBaPrefs(baPrefs_t* prefs)
             "inChanneln: %d, "          \
             "outChanneln: %d, "         \
             "framesPerBuffer: %d, "     \
-            "sampleFormat: %ld, "       \
+            "sampleFormat: %d, "       \
             "sampleRate: %lf, "         \
         "}\n",
         prefs->hostApiIdx,
