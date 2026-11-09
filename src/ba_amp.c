@@ -33,7 +33,7 @@ const ampVoice_t voices[] = {
 
 void printAmpValues(ampValues_t* a)
 {
-    LINFO("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d, voice: %d }\n",
+    LINFO("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d, voice: %d }",
         a->gain, a->bass, a->treble, a->power, a->voice); 
 }
 

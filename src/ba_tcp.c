@@ -38,7 +38,7 @@ int processRequest(appInfo_t* app,
     // A valid request message
     switch (msg->type) {
     case UPDATE_PREFS: {
-        LINFO("%d update prefs message received.", msg->type);
+        LINFO("%d update prefs message received", msg->type);
 
         // Parse prefs from message
         baPrefs_t pTemp;
@@ -87,7 +87,6 @@ int processRequest(appInfo_t* app,
         app->baPrefs = pTemp;
 
         ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
-        LINFO("amp voice %s selected", cVoice.name);
         // Initial biquad calculation
         biQuadFilter_lowShelf(
             &app->ampValues.bqf_bass,
@@ -268,7 +267,6 @@ int processRequest(appInfo_t* app,
         //      figure out the maximum number of host APIs
         //          (no idea what this is)
         replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
-        fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
         LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
         if (replySizeEstimate >= BA_BUFLEN) {
             LWARN("reply message overflow risk");
@@ -410,16 +408,16 @@ int initWinsock(appInfo_t* app) {
                 goto cleanup;
             }
 
-            LINFO("Bytes sent: %d\n", status);
+            LINFO("Bytes sent: %d", status);
             tcp.sts = 0;
 
         } else if (status == 0) {
-            LINFO("Connection closing...\n");
+            LINFO("Connection closing...");
             byeMessageReply(&repMsg, tcp.wbuffer);
             tcp.sts = 1;
             break;
         } else {
-            LERROR("recv on incoming message failed: %d\n", WSAGetLastError());
+            LERROR("recv on incoming message failed: %d", WSAGetLastError());
             byeMessageReply(&repMsg, tcp.wbuffer);
             tcp.sts = 1;
             exitCode = 1;
@@ -434,9 +432,9 @@ cleanup:
         int status = send(tcp.cSocket,
             tcp.wbuffer, repMsg.length + BA_HEADER_SIZE_B, 0);
         if (status == SOCKET_ERROR) {
-            LERROR("final send failed: %d\n", status);
+            LERROR("final send failed: %d", status);
         } else {
-            LINFO("final bytes sent: %d\n", status);
+            LINFO("final bytes sent: %d", status);
         }
         tcp.sts = 0;
     }
