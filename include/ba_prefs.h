@@ -3,11 +3,10 @@
 
 
 #include <stdint.h>
+#include <stdio.h>
 #include <portaudio.h>
 
-#define BA_PA_ERROR_LOG "%s:%d \e[31mPortAudio error\e[0m: %s\n"
-#define BA_NULL_HOST_ERROR_LOG "%s:%d \e[31mNull host\e[0m: index=%d\n"
-#define BA_NULL_DEVICE_ERROR_LOG "%s:%d \e[31mNull device\e[0m: index=%d\n"
+#include "ba_common.h"
 
 
 typedef struct BA_PREFS {
