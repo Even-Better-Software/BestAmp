@@ -33,7 +33,7 @@ int main(int argc, char** argv)
     appInfo.baPrefs = prefs;
 
 #ifdef BA_DEBUG
-    printAmpVoices();
+    LINFO("voices %d", getAmpVoiceCount());
 #endif
 
     // initalize portaudio

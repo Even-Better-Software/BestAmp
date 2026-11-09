@@ -32,13 +32,14 @@ typedef enum BA_MESSAGE_TYPES {
     QUERY_HOST_APIS,
     QUERY_DEFAULT_HOST_API,
     QUERY_DEVICES_FOR_HOST_API,
+    QUERY_AMP_VOICES,
 
     UPDATE_PREFS_REPLY  = 1001,
     UPDATE_AMP_VALS_REPLY,
     QUERY_HOST_APIS_REPLY,
     QUERY_DEFAULT_HOST_API_REPLY,
     QUERY_DEVICES_REPLY,
-    QUERY_AMP_VOICES,
+    QUERY_AMP_VOICES_REPLY,
 
     BYE     = 9997,
     OK      = 9998,
@@ -70,6 +71,10 @@ typedef struct BA_QUERY_DEVICE_API_REP {
     int* deviceIdxes;
     const PaDeviceInfo** devices;
 } queryDeviceRep_t;
+
+typedef struct BA_QUERY_AMP_VOICE_REP {
+    int voiceCount;
+} queryAmpVoiceRep_t;
 
 
 /**
@@ -117,6 +122,7 @@ void updateAmpValuesReply(message_t* rpmsg, char* wbuf);
 void queryHostApisReply(message_t* rpmsg, char* wbuf, queryHostApiRep_t* content);
 void queryDevicesReply(message_t* rpmsg, char* wbuf, queryDeviceRep_t* content);
 void queryDevicesBadReply(message_t* rpmsg, char* wbuf);
+void queryAmpVoicesReply(message_t* rpmsg, char* wbuf);
 
 #endif
 

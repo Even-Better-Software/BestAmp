@@ -36,6 +36,9 @@ int parseMessage(message_t* pMsg, char* msg)
     case QUERY_DEVICES_FOR_HOST_API:
         pMsg->type = QUERY_DEVICES_FOR_HOST_API;
         break;
+    case QUERY_AMP_VOICES:
+        pMsg->type = QUERY_AMP_VOICES;
+        break;
     default:
         return -1;
     }
@@ -343,5 +346,35 @@ void queryDevicesBadReply(
     memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
     offset += BA_NUMERIC_FIELD_B;
     memcpy(wbuf + offset, &hcode, BA_NUMERIC_FIELD_B);
+}
+
+void queryAmpVoicesReply(message_t* rpmsg, char* wbuf)
+{
+#ifdef BA_DEBUG
+    assert(rpmsg != NULL && wbuf != NULL);
+#endif
+    int offset = 0;
+    int32_t type = rpmsg->type = QUERY_AMP_VOICES_REPLY;
+    // 4B idx, 32B name
+    int32_t length = rpmsg->length = getAmpVoiceCount() * 36;
+    int32_t htype   = htonl(type);
+    int32_t hlength = htonl(length);
+
+    memcpy(wbuf + offset, &htype, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+    memcpy(wbuf + offset, &hlength, BA_NUMERIC_FIELD_B);
+    offset += BA_NUMERIC_FIELD_B;
+
+    for (int i = 0; i < getAmpVoiceCount(); i++) {
+        ampVoice_t voice = getAmpVoice(i);
+
+        int32_t voiceIdx = htonl(i);
+        memcpy(wbuf + offset, &voiceIdx, BA_NUMERIC_FIELD_B);
+        offset += BA_NUMERIC_FIELD_B;
+
+        memcpy(wbuf + offset, voice.name,
+            min(strlen(voice.name) + 1, BA_SMALL_STR_FIELD_B));
+        offset += BA_SMALL_STR_FIELD_B;
+    }
 }
 
