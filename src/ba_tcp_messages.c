@@ -54,7 +54,7 @@ int parseMessage(message_t* pMsg, char* msg)
 void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
 {
     if (msg->length != 0x24)
-        fprintf(stderr, "\e[31mupdate prefs content length should be 36 bytes.\e[0m\n");
+        LWARN("update prefs content length should be 36 bytes");
 
     int t_data_off = msg->data_off;
 
@@ -87,15 +87,13 @@ void parsePrefsFromMsg(baPrefs_t* prefs, message_t* msg, char* rbuf)
     tmpi = ntohll(tmpi);
     memcpy(&prefs->sampleRate, &tmpi, sizeof(prefs->sampleRate));
     t_data_off += BA_DOUBLE_FIELD_B;
-     
-    fprintf(stdout, BA_INFO " parsed updated prefs\n"); 
 }
 
 
 void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
 {
     if (msg->length != 0x14)
-        fprintf(stderr, "\e[31mupdate amp values content length should be 20 bytes.\e[0m\n");
+        LWARN("update amp values content length should be 20 bytes");
 
     int t_data_off = msg->data_off;
     int32_t t_gain;
@@ -131,15 +129,13 @@ void parseAmpValuesFromMsg(ampValues_t* ampValues, message_t* msg, char* rbuf)
     setAmpBass(ampValues, t_bass);
     setAmpTreble(ampValues, t_treble);
     setAmpPower(ampValues, t_power);
- 
-    fprintf(stdout, BA_INFO " parsed updated amp values\n"); 
 }
 
 
 void parseDeviceQueryFromMsg(int* hostApi, message_t* msg, char* rbuf)
 {
     if (msg->length != 0x04)
-        fprintf(stderr, "\e[31mquery host apis content length should be 4 bytes\e[0m\n");
+        LWARN("query host apis content length should be 4 bytes");
 
     int t_data_off = msg->data_off;
     int32_t t = 0;
@@ -147,17 +143,14 @@ void parseDeviceQueryFromMsg(int* hostApi, message_t* msg, char* rbuf)
         rbuf + t_data_off
     ), BA_NUMERIC_FIELD_B);
     *hostApi = ntohl(t);
-
-    fprintf(stderr, BA_INFO " parsed device query\n");
 }
 
 
 void badMessageReply(message_t* rpmsg, char* wbuf)
 {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int offset = 0;
     int32_t type    = rpmsg->type   = BAD;
     int32_t length  = rpmsg->length = 0;
@@ -172,10 +165,9 @@ void badMessageReply(message_t* rpmsg, char* wbuf)
 
 void byeMessageReply(message_t* rpmsg, char* wbuf)
 {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int32_t type    = rpmsg->type   = BYE;
     int32_t length  = rpmsg->length = 0;
     int32_t htype   = htonl(type);
@@ -187,10 +179,9 @@ void byeMessageReply(message_t* rpmsg, char* wbuf)
 
 void genericOkReply(message_t* rpmsg, char* wbuf)
 {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int offset = 0;
     int32_t type    = rpmsg->type   = OK;
     int32_t length  = rpmsg->length = 0;
@@ -206,10 +197,9 @@ void genericOkReply(message_t* rpmsg, char* wbuf)
 void updatePreferencesReply(
     message_t* rpmsg, char* wbuf, updatePrefsRep_t* content
 ) {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int offset = 0;
     int32_t type    = rpmsg->type   = UPDATE_PREFS_REPLY;
     int32_t length  = rpmsg->length = BA_NUMERIC_FIELD_B;
@@ -245,10 +235,9 @@ void updateAmpValuesReply(
 void queryHostApisReply(
     message_t* rpmsg, char* wbuf, queryHostApiRep_t* content
 ) {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int offset = 0;
     int32_t type = rpmsg->type = QUERY_HOST_APIS_REPLY;
     // 4B id, 32B name, 4B default in idx, 4B default out idx
@@ -292,10 +281,9 @@ void queryHostApisReply(
 void queryDevicesReply(
     message_t* rpmsg, char* wbuf, queryDeviceRep_t* content
 ) {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int offset = 0;
     int32_t type = rpmsg->type = QUERY_DEVICES_REPLY;
     // 4B idx, 32B name, 4B max in channel, 4B max out channel, 8B default sample rate
@@ -339,10 +327,9 @@ void queryDevicesReply(
 void queryDevicesBadReply(
     message_t* rpmsg, char* wbuf
 ) {
-    if (wbuf == NULL) {
-        fprintf(stderr, BA_WRITE_BUFFER_NULL);
-        return;
-    }
+#ifdef BA_DEBUG
+    assert(wbuf != NULL);
+#endif
     int offset = 0;
     int32_t type = rpmsg->type = QUERY_DEVICES_REPLY;
     int32_t length = rpmsg->length = 4;
