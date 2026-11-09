@@ -1,8 +1,7 @@
 #include <portaudio.h>
 
+#include "ba_app.h"
 #include "ba_common.h"
-#include "ba_amp.h"
-#include "ba_prefs.h"
 #include "ba_tcp.h"
 
 
@@ -10,6 +9,7 @@
 #define BA_HELP BA_NAME \
 " program useage:\n" \
 "\t" BA_NAME
+
 
 
 int main(int argc, char** argv)

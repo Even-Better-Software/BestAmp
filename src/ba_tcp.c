@@ -1,5 +1,4 @@
 #include "ba_tcp.h"
-#include "portaudio.h"
 
 
 char* BA_NO_CONTENT = NULL;

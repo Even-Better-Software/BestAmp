@@ -8,7 +8,6 @@
 
 #include "ba_common.h"
 
-
 typedef struct BA_PREFS {
     int32_t hostApiIdx;
     int32_t inDevIdx;

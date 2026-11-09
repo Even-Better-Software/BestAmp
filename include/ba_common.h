@@ -5,9 +5,6 @@
 #include <time.h>
 #include <portaudio.h>
 
-#include "ba_amp.h"
-#include "ba_prefs.h"
-
 
 #define true    (1)
 #define false   (0)
@@ -53,21 +50,6 @@
         fprintf((stderr), BA_ERROR "[%s] " fmt "\n",    \
             timebuffer, ##__VA_ARGS__);                 \
     } while (0);
-
-/**
-Container for application state.
-    `baPrefs`
-        should be a pointer to `ampValues_t`
-    `ampValues`
-        should be a pointer to `baPrefs_t`
-*/
-typedef struct BA_APP_INFO {
-    ampValues_t ampValues;
-    baPrefs_t baPrefs;
-    PaStream* stream;
-    int streamOpen;
-    int streamRunning;
-} appInfo_t;
 
 #endif
 
