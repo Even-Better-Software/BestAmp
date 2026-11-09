@@ -33,7 +33,7 @@ const ampVoice_t voices[] = {
 
 void printAmpValues(ampValues_t* a)
 {
-    printf("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d, voice: %d }\n",
+    LINFO("AmpValues: { gain: %d, bass: %d, treble: %d, power: %d, voice: %d }\n",
         a->gain, a->bass, a->treble, a->power, a->voice); 
 }
 
@@ -80,7 +80,7 @@ ampVoiceType_t itoavt(int raw) {
 
 void printAmpVoice(ampVoice_t* v)
 {
-    fprintf(stderr, "AmpVoice: {" \
+    LINFO("AmpVoice: {" \
         "name: %s, " \
         "bassCornerFreq: %f, " \
         "trebleCornerFreq: %f, "
@@ -92,7 +92,7 @@ void printAmpVoices()
 {
     for (int i = 0; i < BA_AMP_VOICE_COUNT; i++) {
         ampVoice_t v = voices[i];
-        fprintf(stderr, BA_INFO "%d ", i);
+        LINFO("amplifier voice count: %d ", i);
         printAmpVoice(&v);
     }
 }
