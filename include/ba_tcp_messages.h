@@ -4,7 +4,11 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <winsock2.h>
+#ifdef BA_DEBUG
+#include <assert.h>
+#endif
 
 #include "ba_common.h"
 #include "ba_prefs.h"

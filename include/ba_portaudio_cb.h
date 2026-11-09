@@ -4,7 +4,11 @@
 
 #include <portaudio.h>
 
+#include "ba_app.h"
 #include "ba_common.h"
+#include "ba_prefs.h"
+#include "ba_app.h"
+#include "ba_dsp.h"
 
 
 int bestAmpCB(

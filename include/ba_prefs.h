@@ -2,22 +2,21 @@
 #define BA_PREFS
 
 
+#include <stdint.h>
+#include <stdio.h>
 #include <portaudio.h>
 
-#define BA_PA_ERROR_LOG "%s:%d \e[31mPortAudio error\e[0m: %s\n"
-#define BA_NULL_HOST_ERROR_LOG "%s:%d \e[31mNull host\e[0m: index=%d\n"
-#define BA_NULL_DEVICE_ERROR_LOG "%s:%d \e[31mNull device\e[0m: index=%d\n"
-
+#include "ba_common.h"
 
 typedef struct BA_PREFS {
-    int hostApiIdx;
-    int inDevIdx;
-    int outDevIdx;
-    int inChanneln;
-    int outChanneln;
-    int framesPerBuffer;
+    int32_t hostApiIdx;
+    int32_t inDevIdx;
+    int32_t outDevIdx;
+    int32_t inChanneln;
+    int32_t outChanneln;
+    int32_t framesPerBuffer;
+    int32_t sampleFormat;
     double sampleRate;
-    long sampleFormat;  // I would almost like to be able to cast to the thing at this
     PaHostApiInfo* hostApi;
     PaDeviceInfo* outDev;
     PaDeviceInfo* inDev;

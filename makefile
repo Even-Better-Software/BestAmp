@@ -35,6 +35,10 @@ DLL_DEST    = $(BUILD_DIR)/libportaudio.dll
 
 all: $(TARGET) $(DLL_DEST)
 
+debug: CFLAGS += -g
+debug: CFLAGS += -DBA_DEBUG
+debug: $(TARGET) $(DLL_DEST)
+
 stats: $(STATS_TARGET) $(DLL_DEST)
 
 
@@ -81,4 +85,13 @@ $(STATS_TARGET): $(STATS) $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
 
 $(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
 > cp $(DLL_SRC) $(DLL_DEST)
+
+
+
+clean:
+>- rm ./build/*.o
+>- rm ./build/BestAmp.exe
+
+clean-stats:
+>- rm ./build/stats.exe
 

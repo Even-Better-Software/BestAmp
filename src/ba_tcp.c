@@ -36,11 +36,10 @@ int processRequest(appInfo_t* app,
     PaError err;
 
     // A valid request message
-    // [WO] longterm -> move these to message handler functions
-    //      move the implementations for each message type to their own function
     switch (msg->type) {
     case UPDATE_PREFS: {
-        fprintf(stdout, BA_UPDATE_PREFS_MSG_RECEIVED);
+        LINFO("%d update prefs message received", msg->type);
+
         // Parse prefs from message
         baPrefs_t pTemp;
         updatePrefsRep_t reply = {0};
@@ -78,7 +77,7 @@ int processRequest(appInfo_t* app,
         // send the update prefs bad preferences reply
         err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
         if (err != paNoError) {
-            printf("\e[31mFormat supported error\e[0m: %s\n", Pa_GetErrorText(err));
+            LWARN("format supported error: %s", Pa_GetErrorText(err));
             // badMessageReply(rmsg, wbuf);
             reply.code = 1;
             updatePreferencesReply(rmsg, wbuf, &reply);
@@ -86,11 +85,8 @@ int processRequest(appInfo_t* app,
         }
         // Format supported, so pTemp becomes app->prefs
         app->baPrefs = pTemp;
-        ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
 
-        // [WO] should be able to see the new amp voice name
-        fprintf(stderr, "AMP VOICE: %s\n", cVoice.name);
-        
+        ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
         // Initial biquad calculation
         biQuadFilter_lowShelf(
             &app->ampValues.bqf_bass,
@@ -113,7 +109,7 @@ int processRequest(appInfo_t* app,
                             bestAmpCB,
                             app );
         if (err != paNoError) {
-            printf("\e[31mOpen stream error\e[0m: %s\n", Pa_GetErrorText(err));
+            LWARN("portaudio stream open error: %s", Pa_GetErrorText(err));
             reply.code = 1;
             updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
@@ -121,10 +117,12 @@ int processRequest(appInfo_t* app,
         app->streamOpen = 1;
         err = Pa_StartStream(app->stream);
         if (err != paNoError) {
+            LWARN("portaudio start stream error: %s", Pa_GetErrorText(err));
             reply.code = 1;
             updatePreferencesReply(rmsg, wbuf, &reply);
             return BA_CONTINUE;
         }
+        LINFO("portaudio stream started");
         app->streamRunning = 1;
 
         // Send the update prefs OK reply
@@ -134,18 +132,13 @@ int processRequest(appInfo_t* app,
 
     }
     case UPDATE_AMP_VALS: {
-        fprintf(stdout, BA_UPDATE_AMP_VALS_MSG_RECEIVED);
+        LINFO("%d update amp values message recevied", msg->type);
+
         ampValues_t avTemp;
         initAmpValues(&avTemp);
         parseAmpValuesFromMsg(&avTemp, msg, rbuf);
         printAmpValues(&avTemp);
-        // this function handles setting this to the default voice if
-        //      the supplied voice is outside of the valid range of voices
         ampVoice_t cVoice = getAmpVoice(avTemp.voice);
-
-        // [WO] should be able to see the new amp voice name
-        printAmpVoice(&cVoice);
-
         // recalculate biquads
         biQuadFilter_lowShelf(
             &avTemp.bqf_bass,
@@ -157,7 +150,6 @@ int processRequest(appInfo_t* app,
             (float)avTemp.trebleDb,
             (float)app->baPrefs.sampleRate,
             cVoice.trebleCornerFreq);
-        
         // because it is not possible for this to fail
         // we can send the generic OK reply
         //      actually I can envision a situation where this does fail
@@ -170,18 +162,16 @@ int processRequest(appInfo_t* app,
     }
     case QUERY_HOST_APIS: {
         // [WO] BA_BUFLEN overflow risk (variable length)
+        LINFO("%d query host APIs message recevied", msg->type);
 
         int replySizeEstimate = 0;
         queryHostApiRep_t reply = { 0 };
-
-        fprintf(stdout, BA_QUERY_HOST_APIS_MSG_RECEIVED);
-        // fprintf(stdout, BA_UNIMPLEMENTED);
 
         // ask port audio for the host APIs
         // just pass this to the message processor basically
         // I need memory, I need N * sizeof() to store const pointers to hostapi info structs
         PaHostApiIndex hostApiCount = Pa_GetHostApiCount();
-        fprintf(stderr, "%d host apis\n", hostApiCount);
+        LINFO("%d host apis", hostApiCount);
         const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
             calloc(hostApiCount, sizeof(PaHostApiIndex*));
         for (int i = 0; i < hostApiCount; i++) {
@@ -198,9 +188,9 @@ int processRequest(appInfo_t* app,
         //      figure out the maximum number of host APIs
         //          (no idea what this is)
         replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
-        fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+        LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
         if (replySizeEstimate >= BA_BUFLEN) {
-            fprintf(stderr, "message overflow risk\n");
+            LWARN("reply message overflow risk");
         } // [WO] for now, this will just whine into stderr
 
         queryHostApisReply(rmsg, wbuf, &reply);
@@ -210,16 +200,16 @@ int processRequest(appInfo_t* app,
 
     }
     case QUERY_DEFAULT_HOST_API: {
+        LINFO("%d query default host API msg recevied", msg->type);
+
         int hostApiCount = 1;
         queryHostApiRep_t reply = { 0 };
-
-        fprintf(stdout, BA_QUERY_DEFAULT_HOST_API_MSG_RECEIVED);
 
         // ask port audio for the default host API
         //      if the default host API cannot be queried this is a fatal case
         PaHostApiIndex hostApiIndex = Pa_GetDefaultHostApi();
         if (hostApiIndex < 0) {
-            fprintf(stderr, BA_PORTAUDIO_ERROR);
+            LERROR("could not get the default host API");
             return BA_ERROR_FATAL;
         }
         
@@ -239,22 +229,21 @@ int processRequest(appInfo_t* app,
     }
     case QUERY_DEVICES_FOR_HOST_API: {
         // [WO] BA_BUFLEN overflow risk (variable length)
+        LINFO("%d query devices message recieved", msg->type);
 
         int hostApiIdx = 0;
         int replySizeEstimate = 0;
         queryDeviceRep_t reply = {0};
-
         parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
 
-        fprintf(stdout, BA_QUERY_DEVICES_FOR_HOST_API_MSG_RECEIVED);
-        fprintf(stderr, "query devices for: %d\n", hostApiIdx);
+        LINFO("query devices for %d host API idx", hostApiIdx);
 
         // Get the Host API Info Struct
         //      if this fails, then the index supplied is invalid so
         //      we send the bad reply back to the client
         const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
         if (hostApi == NULL) {
-            fprintf(stderr, "\e[31mgiven host api index returned NULL hostapi info struct must be invalid.\e[0m\n");
+            LWARN("used supplied host API idx was bad");
             queryDevicesBadReply(rmsg, wbuf);
             return BA_CONTINUE;
         }
@@ -269,10 +258,6 @@ int processRequest(appInfo_t* app,
             const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
             *(reply.deviceIdxes + i)    = deviceIdx;
             *(reply.devices + i)        = device;
-            /*
-            fprintf(stderr, "host device idx: %d, global device idx: %d\n",
-                i, deviceIdx);
-            */
         }
         // 4 32 4 4 8 = 52 bytes per device
         // we should probably check the buffer length here & scale it if
@@ -282,9 +267,9 @@ int processRequest(appInfo_t* app,
         //      figure out the maximum number of host APIs
         //          (no idea what this is)
         replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
-        fprintf(stderr, "%d message size, %d buffer size\n", replySizeEstimate, BA_BUFLEN);
+        LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
         if (replySizeEstimate >= BA_BUFLEN) {
-            fprintf(stderr, "message overflow risk\n");
+            LWARN("reply message overflow risk");
         } // [WO] for now, this will just whine into stderr
 
         queryDevicesReply(rmsg, wbuf, &reply);
@@ -295,11 +280,13 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
     }
     case KILL: {
+        LINFO("%d kill message received", msg->type);
+        LWARN("this message will do nothing");
         return BA_CONTINUE;
 
     }
     default: {
-        fprintf(stderr, BA_INVALID_REQUEST_TYPE);
+        LWARN("unknown message type received & ignored");
         return BA_CONTINUE;
     }}
 }
@@ -314,21 +301,21 @@ int initWinsock(appInfo_t* app) {
     // Initialize Winsock
     int status = WSAStartup(MAKEWORD(2,2), &tcp.wsaData); // need to manually ensure version 2.2 for some reason
     if (status != 0) {
-        printf("WSAStartup failed: %d\n", status);
+        LERROR("WSAStartup failed: %d", status);
         return 1;
     }
 
     // Resolve the local address and port to be used by the server
     status = getaddrinfo(NULL, BA_PORT, &tcp.hints, &tcp.result);
     if (status != 0) {
-        printf("getaddrinfo failed: %d\n", status);
+        LERROR("getaddrinfo failed: %d", status);
         freeaddrinfo(tcp.result);
         return 1;
     }
     // Create the server socket
     tcp.sSocket = socket(tcp.result->ai_family, tcp.result->ai_socktype, tcp.result->ai_protocol);
     if (tcp.sSocket == INVALID_SOCKET) {
-        printf("Error at socket(): %d\n", WSAGetLastError());
+        LERROR("error at socket creation: %d", WSAGetLastError());
         freeaddrinfo(tcp.result);
         closesocket(tcp.sSocket);
         return 1;
@@ -337,7 +324,7 @@ int initWinsock(appInfo_t* app) {
     status = bind(tcp.sSocket,
         tcp.result->ai_addr, (int)tcp.result->ai_addrlen);
     if (status == SOCKET_ERROR) {
-        printf("bind failed with error: %d\n", WSAGetLastError());
+        LERROR("error at socket bind: %d", WSAGetLastError());
         freeaddrinfo(tcp.result);
         closesocket(tcp.sSocket);
         return 1;
@@ -346,24 +333,26 @@ int initWinsock(appInfo_t* app) {
     freeaddrinfo(tcp.result);
     // start listening
     if (listen(tcp.sSocket, 1) == SOCKET_ERROR) { // allow only 1 connection in the backlog
-        printf("Listen failed with error: %d\n", WSAGetLastError() );
+        LERROR("error while opening socket for listening: %d",
+            WSAGetLastError());
         closesocket(tcp.sSocket);
         return 1;
     }
-    printf("Listening on port %s...\n", BA_PORT);
+    LINFO("BestAmp audio engine listening on port %d", BA_PORT_I);
     // accept a client
     tcp.cSocket = accept(tcp.sSocket, NULL, NULL);
     if (tcp.cSocket == INVALID_SOCKET) {
-        printf("accept failed: %d\n", WSAGetLastError());
+        LERROR("error while accepting connection on socket: %d",
+            WSAGetLastError());
         closesocket(tcp.sSocket);
         return 1;
     }
-    printf("Client connected.\n");
+    LINFO("client connected");
     // no need to keep the original socket anymore, we just want the one client socket
     closesocket(tcp.sSocket);
 
+
     // Receive until the peer shuts down the connection
-    // [WO] clear & allocate this buffer
     // so I know that the memory is zeroed
     tcp.rbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
     tcp.wbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
@@ -384,15 +373,15 @@ int initWinsock(appInfo_t* app) {
         if (status > 0) {
             // parse message
             //      parse returns n < 0 it fails write bad message reply
+            // [WO] why does this exit the program?
             status = parseMessage(&reqMsg, tcp.rbuffer);
             if (status < 0) {
-                printf(BA_BAD_MESSAGE_RECIEVED);
+                LERROR("bad message recieved");
                 badMessageReply(&repMsg, tcp.wbuffer);
                 tcp.sts = 1;
+                exitCode = 1;
                 goto cleanup;
             }
-            printMessage(&reqMsg);
-
             // process request / message (delegates to message handlers)
             // process message paths will write specific replies to `repMsg`
             //      where this is the accounting for the message
@@ -401,7 +390,7 @@ int initWinsock(appInfo_t* app) {
             status = processRequest(app, &reqMsg, &repMsg,
                 tcp.rbuffer, tcp.wbuffer);
             if (status == BA_ERROR_FATAL) {
-                fprintf(stderr, BA_PORTAUDIO_ERROR);
+                LERROR("fatal port audio error while processing request message");
                 badMessageReply(&repMsg, tcp.wbuffer);
                 tcp.sts = 1;
                 exitCode = 1;
@@ -414,19 +403,21 @@ int initWinsock(appInfo_t* app) {
             status = send(tcp.cSocket, tcp.wbuffer,
                 repMsg.length + BA_HEADER_SIZE_B, 0);
             if (status == SOCKET_ERROR) {
-                printf("send failed: %d\n", WSAGetLastError());
+                LERROR("fatal error while submitting reply message");
+                exitCode = 1;
                 goto cleanup;
             }
-            printf("Bytes sent: %d\n", status);
+
+            LINFO("Bytes sent: %d", status);
             tcp.sts = 0;
 
         } else if (status == 0) {
-            printf("Connection closing...\n");
+            LINFO("Connection closing...");
             byeMessageReply(&repMsg, tcp.wbuffer);
             tcp.sts = 1;
             break;
         } else {
-            printf("recv failed: %d\n", WSAGetLastError());
+            LERROR("recv on incoming message failed: %d", WSAGetLastError());
             byeMessageReply(&repMsg, tcp.wbuffer);
             tcp.sts = 1;
             exitCode = 1;
@@ -441,9 +432,9 @@ cleanup:
         int status = send(tcp.cSocket,
             tcp.wbuffer, repMsg.length + BA_HEADER_SIZE_B, 0);
         if (status == SOCKET_ERROR) {
-            fprintf(stderr, "final send failed: %d\n", status);
+            LERROR("final send failed: %d", status);
         } else {
-            fprintf(stderr, "final bytes sent: %d\n", status);
+            LINFO("final bytes sent: %d", status);
         }
         tcp.sts = 0;
     }
@@ -463,10 +454,10 @@ cleanup:
     WSACleanup();
     
     if (exitCode == 0) {
-        fprintf(stderr, "tcp server closed without error");
+        LINFO("tcp server closed without error");
         return 0;
     } else {
-        fprintf(stderr, "tcp server closed with error");
+        LINFO("tcp server closed with error");
         return 1;
     }
 }

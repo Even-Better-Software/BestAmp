@@ -1,12 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <portaudio.h>
 
+#include "ba_app.h"
 #include "ba_common.h"
-#include "ba_amp.h"
-#include "ba_dsp.h"
-#include "ba_portaudio_helpers.h"
-#include "ba_prefs.h"
 #include "ba_tcp.h"
 
 
@@ -16,13 +11,13 @@
 "\t" BA_NAME
 
 
-/**
-Program Entry
-*/
+
 int main(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
+
+    LINFO("starting BestAmp audio engine");
 
     PaError e;
 
@@ -37,22 +32,26 @@ int main(int argc, char** argv)
     appInfo.ampValues = amp;
     appInfo.baPrefs = prefs;
 
-    // [WO] testing show all the ampVoices
+#ifdef BA_DEBUG
     printAmpVoices();
+#endif
 
     // initalize portaudio
     e = Pa_Initialize();
-    if (e != paNoError)
-        goto error;
-
-    // coalesce to system defaults (mostly)
-    // failsafe initial state value
-    e = coalesceBaPrefsToPaDefaults(&prefs);
-    if (e < 0) {
-        printf("\e[31merror coalescing user preferences\e[0m: %s\n", Pa_GetErrorText(e));
+    if (e != paNoError) {
+        LERROR("error initializing portaudio");
         goto error;
     }
 
+    // coalesce to system defaults
+    // failsafe initial state value
+    e = coalesceBaPrefsToPaDefaults(&prefs);
+    if (e < 0) {
+        LERROR("error determining user preferences system defaults");
+        goto error;
+    }
+
+#ifdef BA_DEBUG
     printf(BA_INFO);
     printBaPrefs(&prefs);
     printf(BA_INFO);
@@ -61,23 +60,25 @@ int main(int argc, char** argv)
     printDeviceInfo(prefs.inDev);
     printf(BA_INFO);
     printDeviceInfo(prefs.outDev);
+#endif
 
-    // TCP LOOP BEGINS
-    // [WO] add some return & then check that
     int sockExitStatus = initWinsock(&appInfo);
-    if (sockExitStatus != 0)
+    if (sockExitStatus != 0) {
+        LERROR("error exiting BestAmp audio engine event loop");
         goto error;
+    }
     
     // terminate portaudio
     Pa_Terminate();
+
+    LINFO("exiting BestAmp audio engine normally");
 
     return 0;
 
 error:
     // still need to terminate portaudio
     Pa_Terminate();
-
-    printf(BA_HELP);
+    LERROR("exiting BestAmp audio engine w/ error code %d", e);
     return e;
 }
     

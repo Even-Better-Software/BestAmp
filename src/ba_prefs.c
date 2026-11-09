@@ -1,12 +1,9 @@
-#include <stdio.h>
-#include <portaudio.h>
-
 #include "ba_prefs.h"
 
 
 void printBaPrefs(baPrefs_t* prefs)
 {
-    printf(
+    LINFO(
         "Prefs: {"                      \
             "hostIdx: %d, "             \
             "inDevIdx: %d, "            \
@@ -14,9 +11,9 @@ void printBaPrefs(baPrefs_t* prefs)
             "inChanneln: %d, "          \
             "outChanneln: %d, "         \
             "framesPerBuffer: %d, "     \
-            "sampleFormat: %ld, "       \
+            "sampleFormat: %d, "       \
             "sampleRate: %lf, "         \
-        "}\n",
+        "}",
         prefs->hostApiIdx,
         prefs->inDevIdx,
         prefs->outDevIdx,
@@ -55,45 +52,42 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
 
     defaultHostApiIdx = Pa_GetDefaultHostApi();
     if (defaultHostApiIdx < 0) {
-        fprintf(stderr, BA_PA_ERROR_LOG,
-            __FILE_NAME__, __LINE__, Pa_GetErrorText(defaultHostApiIdx));
+        LERROR("error getting the default host API: %s",
+            Pa_GetErrorText(defaultHostApiIdx));
         return -1;
     }
     prefs->hostApiIdx = defaultHostApiIdx;
     defaultHostApi = (PaHostApiInfo*)Pa_GetHostApiInfo(prefs->hostApiIdx);
     if (defaultHostApi == NULL) {
-        fprintf(stderr, BA_NULL_HOST_ERROR_LOG,
-            __FILE_NAME__, __LINE__, prefs->hostApiIdx);
+        LERROR("null host info for host api idx %d", prefs->hostApiIdx);
         return -1;
     }
     prefs->hostApi = defaultHostApi;
 
     defaultiDevIdx = Pa_GetDefaultInputDevice();
     if (defaultiDevIdx < 0) {
-        fprintf(stderr, BA_PA_ERROR_LOG,
-            __FILE_NAME__, __LINE__, Pa_GetErrorText(defaultiDevIdx));
+        LERROR("error getting the default input device: %s",
+            Pa_GetErrorText(defaultiDevIdx));
         return -1;
     }
     prefs->inDevIdx = defaultiDevIdx;
     defaultiDev = (PaDeviceInfo*)Pa_GetDeviceInfo(defaultiDevIdx);
     if (defaultiDev == NULL) {
-        fprintf(stderr, BA_NULL_DEVICE_ERROR_LOG,
-            __FILE_NAME__, __LINE__, defaultiDevIdx);
+        LERROR("null device info for device idx %d", defaultiDevIdx);
         return -1;
     }
     prefs->inDev = defaultiDev;
 
     defaultoDevIdx = Pa_GetDefaultOutputDevice();
     if (defaultoDevIdx < 0) {
-        fprintf(stderr, BA_PA_ERROR_LOG,
-            __FILE_NAME__, __LINE__, Pa_GetErrorText(defaultoDevIdx));
+        LERROR("error getting the default output device: %s",
+            Pa_GetErrorText(defaultoDevIdx));
         return -1;
     }
     prefs->outDevIdx = defaultoDevIdx;
     defaultoDev = (PaDeviceInfo*)Pa_GetDeviceInfo(defaultoDevIdx);
     if (defaultoDev == NULL) {
-        fprintf(stderr, BA_NULL_DEVICE_ERROR_LOG,
-            __FILE_NAME__, __LINE__, defaultoDevIdx);
+        LERROR("null device info for device idx %d", defaultoDevIdx);
         return -1;
     }
     prefs->outDev = defaultoDev;
@@ -105,6 +99,8 @@ int initBaPrefsToPaDefaults(baPrefs_t* prefs)
     )
         ? defaultiDev->defaultSampleRate
         : defaultoDev->defaultSampleRate;
+
+    // [WO] TODO
     prefs->sampleFormat = paFloat32;
     prefs->framesPerBuffer = 512;
 
@@ -123,16 +119,15 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
     if (prefs->hostApiIdx < 0) {
         hostApiIdx = Pa_GetDefaultHostApi();
         if (hostApiIdx < 0) {
-            fprintf(stderr, BA_PA_ERROR_LOG,
-                __FILE_NAME__, __LINE__, Pa_GetErrorText(hostApiIdx));
+            LERROR("error getting the default host API: %s",
+                Pa_GetErrorText(hostApiIdx));
             return -1;
         }
         prefs->hostApiIdx = hostApiIdx;
     }
     hostApi = (PaHostApiInfo*)Pa_GetHostApiInfo(prefs->hostApiIdx);
     if (hostApi == NULL) {
-        fprintf(stderr, BA_NULL_HOST_ERROR_LOG,
-            __FILE_NAME__, __LINE__, prefs->hostApiIdx);
+        LERROR("null host info for host api idx %d", prefs->hostApiIdx);
         return -1;
     }
     prefs->hostApi = hostApi;
@@ -140,16 +135,15 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
     if (prefs->inDevIdx < 0) {
         iDevIdx = Pa_GetDefaultInputDevice();
         if (iDevIdx < 0) {
-            fprintf(stderr, BA_PA_ERROR_LOG,
-                __FILE_NAME__, __LINE__, Pa_GetErrorText(iDevIdx));
+            LERROR("error getting the default input device: %s",
+                Pa_GetErrorText(iDevIdx));
             return -1;
         }
         prefs->inDevIdx = iDevIdx;
     }
     iDev = (PaDeviceInfo*)Pa_GetDeviceInfo(prefs->inDevIdx);
     if (iDev == NULL) {
-        fprintf(stderr, BA_NULL_DEVICE_ERROR_LOG,
-            __FILE_NAME__, __LINE__, prefs->inDevIdx);
+        LERROR("null device info for device idx %d", prefs->inDevIdx);
         return -1;
     }
     prefs->inDev = iDev;
@@ -157,16 +151,15 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
     if (prefs->outDevIdx < 0) {
         oDevIdx = Pa_GetDefaultOutputDevice();
         if (oDevIdx < 0) {
-            fprintf(stderr, BA_PA_ERROR_LOG,
-                __FILE_NAME__, __LINE__, Pa_GetErrorText(oDevIdx));
+            LERROR("error getting the default output device: %s",
+                Pa_GetErrorText(oDevIdx));
             return -1;
         }
         prefs->outDevIdx = oDevIdx;
     }
     oDev = (PaDeviceInfo*)Pa_GetDeviceInfo(prefs->outDevIdx);
     if (oDev == NULL) {
-        fprintf(stderr, BA_NULL_DEVICE_ERROR_LOG,
-            __FILE_NAME__, __LINE__, oDevIdx);
+        LERROR("null device info for device idx %d", prefs->outDevIdx);
         return -1;
     }
     prefs->outDev = oDev;
@@ -182,6 +175,7 @@ int coalesceBaPrefsToPaDefaults(baPrefs_t* prefs)
         ? iDev->defaultSampleRate
         : oDev->defaultSampleRate;
 
+    // [WO] TODO
     prefs->sampleFormat = paFloat32;
     prefs->framesPerBuffer = 512;
 
