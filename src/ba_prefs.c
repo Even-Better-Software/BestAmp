@@ -3,7 +3,7 @@
 
 void printBaPrefs(baPrefs_t* prefs)
 {
-    printf(
+    LINFO(
         "Prefs: {"                      \
             "hostIdx: %d, "             \
             "inDevIdx: %d, "            \
@@ -13,7 +13,7 @@ void printBaPrefs(baPrefs_t* prefs)
             "framesPerBuffer: %d, "     \
             "sampleFormat: %d, "       \
             "sampleRate: %lf, "         \
-        "}\n",
+        "}",
         prefs->hostApiIdx,
         prefs->inDevIdx,
         prefs->outDevIdx,

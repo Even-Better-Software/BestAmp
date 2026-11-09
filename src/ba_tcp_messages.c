@@ -3,7 +3,7 @@
 
 void printMessage(message_t* msg)
 {
-    printf("type: %d, length: %d\n", msg->type, msg->length);
+    LINFO("Message: { type: %d, length: %d }", msg->type, msg->length);
 }
 
 
