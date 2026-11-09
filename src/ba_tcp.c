@@ -1,4 +1,5 @@
 #include "ba_tcp.h"
+#include "ba_amp.h"
 
 
 char* BA_NO_CONTENT = NULL;
@@ -276,6 +277,19 @@ int processRequest(appInfo_t* app,
 
         free(reply.deviceIdxes);
         free(reply.devices);
+
+        return BA_CONTINUE;
+    }
+    case QUERY_AMP_VOICES: {
+        // [WO] BA_BUFLEN overflow risk (variable length)
+        LINFO("%d query amp voices message received", msg->type);
+
+        int replySizeEstimate = ((getAmpVoiceCount() * (36)) + 8);
+        LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
+        if (replySizeEstimate >= BA_BUFLEN) {
+            LWARN("reply message overflow risk");
+        } // [WO] for now, this will just whine into stderr
+        queryAmpVoicesReply(rmsg, wbuf);
 
         return BA_CONTINUE;
     }

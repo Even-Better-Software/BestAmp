@@ -1,5 +1,5 @@
 # BestAmp Protocol Specification
-### v2, Will Otterbein, 20261021
+### v3, Will Otterbein, 20261108
 
 This document serves to (somewhat) formally define the structure of the application layer protocol of BestAmp.
 
@@ -40,6 +40,7 @@ Incoming (Client -> BestAmp) message types shall be the following:
 | 3 | query host APIs |
 | 4 | query default host API |
 | 5 | query devices for host API |
+| 6 | query amplifier voices |
 
 Outgoing (BestAmp -> Client) message types shall be the following:
 | Type (Decimal Value) | Meaning |
@@ -50,6 +51,7 @@ Outgoing (BestAmp -> Client) message types shall be the following:
 | 1003 | query host APIs reply |
 | 1004 | query default host API reply |
 | 1005 | query devices for host API reply |
+| 1006 | query amplifier voices reply |
 | 9998 | generic OK |
 | 9999 | Bad message |
 
@@ -250,3 +252,31 @@ type (1005), 4B  content length, 4B
 To ensure a consistent content of n > 0 for error code.
 
 > This request can fail if the request message supplies an invalid host API index, the host API index should be determine either with the Query Host APIs message or the Query Default Host API message.
+
+#### Query Amplifier Voices
+Intention of this message: Let a client determine the voices that the amplifer supports.
+
+The request shall be of the following byte-structure:
+```
+0x00000006  0x00000000
+type, 4B    content length, 4B
+```
+
+The reply shall be of the following byte-structure(s):
+
+*on success*
+```
+0x000003EE       0xFFFFFFFF
+type (1006), 4B  content length (variable), 4B
+
+
+0xFFFFFFFF   0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+voice idx, 4B  voice human name, 32B
+```
+
+Each voice occupies 36B, where the first 4B is the voice idx, type `int`, and the 32B proceeding B are the human name, type `char` (ASCII).
+
+> Successful replies for this message will be of a variable length, indicated by the header content length value. Content length will be 36 * device count B.
+
+> This request should not fail as these are programmed into the amplifier.
+

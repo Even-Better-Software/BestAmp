@@ -49,7 +49,8 @@ https://staff.fnwi.uva.nl/r.vandenboomgaard/SignalProcessing/SystemsSignals/deci
 
 typedef enum BA_AMP_VOICES {
     DEFAULT,
-    TEST
+    TEST,
+    TEST2
 } ampVoiceType_t;
 
 
@@ -74,7 +75,7 @@ typedef struct BA_AMP_VOICE {
 } ampVoice_t;
 
 
-#define BA_AMP_VOICE_COUNT (2)
+#define BA_AMP_VOICE_COUNT (3)
 
 
 typedef struct BA_AMP_VALUES {
@@ -123,6 +124,7 @@ ampVoiceType_t itoavt(int raw);
 
 void printAmpVoice(ampVoice_t* v);
 void printAmpVoices();
+int getAmpVoiceCount();
 
 /**
 Using a `ampVoiceType_t` voice type value, returns the `ampVoice_t` struct

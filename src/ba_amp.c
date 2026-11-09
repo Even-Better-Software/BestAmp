@@ -27,6 +27,17 @@ const ampVoice_t voices[] = {
         .minPower_db        = -60.0f,
         .bassRange_db       = 12.0f,
         .trebRange_db       = 12.0f
+    },
+    {
+        .name               = "test2",
+        .bassCornerFreq     = 400.0f,
+        .trebleCornerFreq   = 2000.0f,
+        .maxGain_db         = 50.0f,
+        .minGain_db         = 0.0f,
+        .maxPower_db        = 30.0f,
+        .minPower_db        = 0.0f,
+        .bassRange_db       = 20.0f,
+        .trebRange_db       = 20.0f
     }
 };
 
@@ -69,6 +80,9 @@ ampVoiceType_t itoavt(int raw) {
         case (TEST): {
             return TEST;
         }
+        case (TEST2): {
+            return TEST2;
+        }
         default: {
             return DEFAULT;
         }
@@ -84,7 +98,7 @@ void printAmpVoice(ampVoice_t* v)
         "name: %s, " \
         "bassCornerFreq: %f, " \
         "trebleCornerFreq: %f, "
-    "}\n", v->name, v->bassCornerFreq, v->trebleCornerFreq);
+    "}", v->name, v->bassCornerFreq, v->trebleCornerFreq);
 }
 
 
@@ -97,12 +111,14 @@ void printAmpVoices()
     }
 }
 
+int getAmpVoiceCount()
+{
+    return (sizeof(voices) / sizeof(ampVoice_t));
+}
 
 ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx)
 {
-    if (voiceTypeIdx <= 0 || voiceTypeIdx >= BA_AMP_VOICE_COUNT)
-        return voices[DEFAULT];
-    return voices[voiceTypeIdx];
+    return voices[itoavt(voiceTypeIdx)];
 }
 
 
