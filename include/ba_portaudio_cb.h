@@ -4,7 +4,6 @@
 
 #include <portaudio.h>
 
-#include "ba_app.h"
 #include "ba_common.h"
 
 
