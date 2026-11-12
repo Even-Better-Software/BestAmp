@@ -1,0 +1,52 @@
+sequenceDiagram
+    actor U as User
+
+    participant C   as BestAmpUI.Client
+    participant B   as BestAmpUI.Bridge
+    participant A1  as BestAmp
+    participant A2  as BestAmp (PortAudio)
+
+
+    %% start
+
+    U ->> C: Opens Application or Selects New Host API
+    activate C
+    C ->> B: `send(DeviceIdsRequest.BuildMsg())`
+    Note right of C: query for the selected or default host API<br/>ie. supplying the host ID message param
+    activate B
+    Note right of B: forward websocket to tcp
+    B ->> A1: 
+    activate A1
+    critical process message type `5`
+    option PaHostApiInfo* is NULL (invalid)
+        A1 ->> A2: `Pa_GetHostApiInfo(index)`
+        activate A2
+        A2 -->> A1: `NULL`
+        deactivate A2
+        A1 -->> B: response type 1005, code `1`
+        B -->> C: response type 1005, code `1`
+        C -->> U: Sees the failed response
+        Note right of U: unless for some reason the client<br/>sends arbitrary HostApi index<br/>this sort of situation should be impossible
+
+    option PaHostApiInfo* not NULL (valid)
+        A1 ->> A2: `Pa_GetHostApiInfo(index)`
+        activate A2
+        A2 -->> A1: `PaHostApiInfo*`
+        Note right of A1: Use this to get device count
+        loop `deviceCount` times
+            A1 ->> A2: `Pa_HostApiDeviceIndexToDeviceIndex`
+            A2 -->> A1: Global device index value
+            A1 ->> A2: `Pa_GetDeviceInfo`
+            A2 -->> A1: `PaDeviceInfo*`
+        end
+        deactivate A2
+        A1 -->> B: response type 1005, device list (variable length)
+        B -->> C: response type 1005, device list (variable length)
+        Note right of B: forward tcp to websocket
+        C -->> U: Sees device values for selected or default host API
+    end
+    deactivate A1
+    deactivate B
+    deactivate C
+
+    %% end

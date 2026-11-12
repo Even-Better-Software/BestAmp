@@ -1,3 +1,11 @@
 build
 build/*
 
+dist
+dist/*
+
+docs/export
+docs/export/*
+
+test/*.bin
+

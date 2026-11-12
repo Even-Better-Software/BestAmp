@@ -1,0 +1,84 @@
+---
+title: BestAmpUI Class Diagram
+config:
+  layout: elk
+---
+classDiagram
+direction LR
+    class Request {
+	    #List~byte~ msg
+	    #BuildMsgContent()*
+	    #GetOpCode() int*
+	    #GetContentLength() int*
+	    #AppendToMessage()
+	    +BuildMsg() byte[]
+    }
+
+    class SettingsData {
+	    +int HostApi
+	    +int DeviceIn
+	    +int ChannelIn
+	    +int DeviceOut
+	    +int ChannelOut
+	    +int SampleRate
+	    +int FramesPerBuffer
+	    +int SampleFormat
+    }
+
+    class DialKnobsData {
+	    +int Voice
+	    +int Gain
+	    +int Volume
+	    +int Bass
+	    +int Treble
+    }
+
+    class DeviceIdsRequest {
+	    +int HostApi
+    }
+
+    class DefaultHostApiRequest {
+    }
+
+    class HostApisRequest {
+    }
+
+    class Response {
+	    #AsHostOrderBytes(byte[], int, int) Span~byte~$
+    }
+
+    class DeviceIdsResponse {
+	    +Dictionary~int, DeviceInfo~ Devices
+	    +DeviceIdsResponse(byte[]) DeviceIdsResponse
+    }
+
+    class DefaultHostApiResponse {
+	    +int HostApiId
+	    +String HostApiName
+	    +DefaultHostApiResponse(byte[]) DefaultHostApiResponse
+    }
+
+    class HostApisResponse {
+	    +Dictionary~int, string~ HostApis
+	    +HostApisResponse(byte[]) HostApisResponse
+    }
+
+    class DeviceInfo {
+	    +String name
+	    +int MaxInChannel
+	    +int MaxOutChannel
+	    +int SampleRate
+    }
+
+	<<Abstract>> Request
+	<<Abstract>> Response
+
+    Request <|-- SettingsData
+    Request <|-- DialKnobsData
+    Request <|-- DeviceIdsRequest
+    Request <|-- DefaultHostApiRequest
+    Request <|-- HostApisRequest
+    Response <|-- DeviceIdsResponse
+    Response <|-- DefaultHostApiResponse
+    Response <|-- HostApisResponse
+    DeviceInfo o-- DeviceIdsResponse

@@ -1,23 +1,107 @@
 #ifndef BA_AMP
 #define BA_AMP
 
+/**
+Ranges:
 
-#define BA_DIAL_MIN (1)
+pre-amp
+dBmin -> 0
+dBmax
+from zero to some max
+
+power
+dBmin -> -60dB, something quite
+dBmax -> 0dB (unmodified full strength signal)
+
+biQuadFilter dbs
+dBmin -> abs(myArbitraryValue)
+dBmax -> abs(myArbitraryValue)
+perhaps 12dB (-12dB, 12dB)
+
+
+
+General db interpretation:
+
+norm = dialValue/dialMax
+targetDb = dbmin + norm*(dbMax -dbMin)
+linearMult = 10^(targetDb / 20)
+
+
+https://staff.fnwi.uva.nl/r.vandenboomgaard/SignalProcessing/SystemsSignals/decibels.html
+    linearMult from db (for amplitude aka sample)
+*/
+
+#include <math.h>
+
+#include "ba_dsp.h"
+
+
+#define BA_DIAL_MIN (0)
 #define BA_DIAL_MAX (10)
+
+#define BA_VTOM(value) \
+    (powf)((10),((value)/(20.0f)))
+#define BA_ITODB(value, dbMax, dbMin) \
+    ((dbMin) + (((1.0f) * (value) / (BA_DIAL_MAX)) * ((dbMax) - (dbMin))))
+#define BA_ITODB_RANGE(value, dbR) \
+    (((-1)*(dbR)) + (((1.0f) * (value) / (BA_DIAL_MAX)) * ((dbR) - ((-1)*(dbR)))))
+
+
+typedef enum BA_AMP_VOICES {
+    DEFAULT,
+    TEST,
+    TEST2
+} ampVoiceType_t;
+
+
+/**
+additional properties
+    preamp max dB
+    power suppression min dB
+    
+    EQ range
+    eqRangedB (can just calc this on the fly)
+        min = -1 * eqRangedB
+        max = 1 * eqRangedB
+*/
+typedef struct BA_AMP_VOICE {
+    char* name;
+    float bassCornerFreq;
+    float trebleCornerFreq;
+    float maxGain_db, minGain_db;
+    float maxPower_db, minPower_db;
+    float bassRange_db;
+    float trebRange_db;
+} ampVoice_t;
+
+
+#define BA_AMP_VOICE_COUNT (3)
 
 
 typedef struct BA_AMP_VALUES {
-    int gain;           // 1-10, as per my amp
-    int bass;           // 1-10, as per my amp
-    int treble;         // 1-10, as per my amp
-    int power;          // 1-10, as per my amp
+    int gain;           // 0-10, as per my amp
+    int bass;           // 0-10, as per my amp
+    int treble;         // 0-10, as per my amp
+    int power;          // 0-10, as per my amp
+    float gainDb;   float gainMult;
+    float bassDb;   float bassMult;
+    float trebleDb; float trebleMult;
+    float powerDb;  float powerMult;
+    ampVoiceType_t voice;
+    biQuadFilter_t bqf_bass;
+    biQuadFilter_t bqf_treble;
 } ampValues_t;
+
+
+// const extern char* ampVoiceNames[];
+extern const ampVoice_t voices[];
 
 
 /**
 Initializes `ampValues_t` struct (gain, bass, treble, power) to 1.
 */
 void initAmpValues(ampValues_t* a);
+
 
 /**
 print `ampValues_t` struct (to be used if the program is being debugged
@@ -29,6 +113,29 @@ void printAmpValues(ampValues_t* a);
 Test that a value is between BA_DIAL_MIN & BA_DIAL_MAX
 */
 int testAmpValue(int value);
+
+
+/**
+Convert some integer value to a voice value.
+    `raw` -> the raw integer value
+    returns an `ampVoice_t` compliant enum
+*/
+ampVoiceType_t itoavt(int raw);
+
+void printAmpVoice(ampVoice_t* v);
+void printAmpVoices();
+int getAmpVoiceCount();
+
+/**
+Using a `ampVoiceType_t` voice type value, returns the `ampVoice_t` struct
+for that voice.
+*/
+ampVoice_t getAmpVoice(ampVoiceType_t voiceTypeIdx);
+
+/**
+On the 
+*/
+void setAmpVoiceType(ampValues_t* a, int rawVoice);
 
 /**
 Sets the value of the `gain` property of the passed `ampValues_t` `a` to be
