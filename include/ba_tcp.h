@@ -15,12 +15,6 @@
 #include "ba_tcp_messages.h"
 
 
-#define BA_PORT "7080"
-#define BA_PORT_I (7081)
-
-// [WO] inital buffer size
-#define BA_BUFLEN (4096)
-
 #define BA_CONTINUE     (0)
 #define BA_ERROR_FORMAT (-1)
 #define BA_ERROR_FATAL  (-2)

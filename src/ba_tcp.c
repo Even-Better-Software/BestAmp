@@ -27,14 +27,6 @@ void cleanupTcpState(tcpState_t* tcp)
         free(tcp->wbuffer);
 }
 
-static int bufRealloc(char* buf, size_t bufSize)
-{
-    (void)buf;
-    (void)bufSize;
-
-    return 0;
-}
-
 
 
 int processRequest(appInfo_t* app, tcpState_t* tcp,
@@ -386,7 +378,7 @@ int initWinsock(appInfo_t* app) {
         repMsg = (message_t){ 0 };
 
         // [WO] TODO safe read
-        status = recv(tcp.cSocket, tcp.rbuffer, BA_BUFLEN, 0);
+        status = recv(tcp.cSocket, tcp.rbuffer, tcp.rbufferSize, 0);
 
         if (status > 0) {
             // parse message
