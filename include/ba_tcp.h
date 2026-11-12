@@ -17,6 +17,8 @@
 
 #define BA_PORT "7080"
 #define BA_PORT_I (7081)
+
+// [WO] inital buffer size
 #define BA_BUFLEN (4096)
 
 #define BA_CONTINUE     (0)
@@ -27,17 +29,13 @@
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
 
-
-extern char* BA_NO_CONTENT;
-
-
 typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
     int     sts;    // stuff to send
-    char*   rbuffer;
-    char*   wbuffer;
+    char*   rbuffer; size_t  rbufferSize;
+    char*   wbuffer; size_t  wbufferSize;
     struct addrinfo*    result;
     struct addrinfo     hints;
 } tcpState_t;
@@ -50,8 +48,8 @@ void cleanupTcpState(tcpState_t* tcp);
 Process a request, reads from `msg`, replies will be written to `rmsg`.
     `msg` & `rmsg` must be initialized.
 */
-int processRequest(appInfo_t* app, message_t* msg, message_t* rmsg,
-    char* rbuf, char* wbuf);
+int processRequest(appInfo_t* app, tcpState_t* tcp, 
+    message_t* msg, message_t* rmsg, char* rbuf, char* wbuf);
 
 /**
 Windows Socket TCP Loop.

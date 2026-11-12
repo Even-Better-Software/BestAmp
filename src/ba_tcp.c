@@ -1,8 +1,4 @@
 #include "ba_tcp.h"
-#include "ba_amp.h"
-
-
-char* BA_NO_CONTENT = NULL;
 
 
 void initTcpState(tcpState_t* tcp)
@@ -11,7 +7,9 @@ void initTcpState(tcpState_t* tcp)
     tcp->cSocket = INVALID_SOCKET;
     tcp->result = NULL;
     tcp->rbuffer = NULL;
+    tcp->rbufferSize = BA_BUFLEN;
     tcp->wbuffer = NULL;
+    tcp->wbufferSize = BA_BUFLEN;
     tcp->sts    = 0;
 
     ZeroMemory(&tcp->hints, sizeof (tcp->hints));
@@ -29,9 +27,17 @@ void cleanupTcpState(tcpState_t* tcp)
         free(tcp->wbuffer);
 }
 
+static int bufRealloc(char* buf, size_t bufSize)
+{
+    (void)buf;
+    (void)bufSize;
+
+    return 0;
+}
 
 
-int processRequest(appInfo_t* app,
+
+int processRequest(appInfo_t* app, tcpState_t* tcp,
     message_t* msg, message_t* rmsg, char* rbuf, char* wbuf
 ) {
     PaError err;
@@ -162,10 +168,8 @@ int processRequest(appInfo_t* app,
 
     }
     case QUERY_HOST_APIS: {
-        // [WO] BA_BUFLEN overflow risk (variable length)
         LINFO("%d query host APIs message recevied", msg->type);
 
-        int replySizeEstimate = 0;
         queryHostApiRep_t reply = { 0 };
 
         // ask port audio for the host APIs
@@ -188,8 +192,9 @@ int processRequest(appInfo_t* app,
         //          (double it until some max)
         //      figure out the maximum number of host APIs
         //          (no idea what this is)
-        replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
-        LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
+        size_t replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
+        LINFO("%lld message size, %lld buffer size",
+            replySizeEstimate, tcp->wbufferSize);
         if (replySizeEstimate >= BA_BUFLEN) {
             LWARN("reply message overflow risk");
         } // [WO] for now, this will just whine into stderr
@@ -229,11 +234,9 @@ int processRequest(appInfo_t* app,
 
     }
     case QUERY_DEVICES_FOR_HOST_API: {
-        // [WO] BA_BUFLEN overflow risk (variable length)
         LINFO("%d query devices message recieved", msg->type);
 
         int hostApiIdx = 0;
-        int replySizeEstimate = 0;
         queryDeviceRep_t reply = {0};
         parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
 
@@ -267,9 +270,10 @@ int processRequest(appInfo_t* app,
         //          (double it until some max)
         //      figure out the maximum number of host APIs
         //          (no idea what this is)
-        replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
-        LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
-        if (replySizeEstimate >= BA_BUFLEN) {
+        size_t replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
+        LINFO("%lld message size, %lld buffer size",
+            replySizeEstimate, tcp->wbufferSize);
+        if (replySizeEstimate >=tcp->wbufferSize) {
             LWARN("reply message overflow risk");
         } // [WO] for now, this will just whine into stderr
 
@@ -281,12 +285,12 @@ int processRequest(appInfo_t* app,
         return BA_CONTINUE;
     }
     case QUERY_AMP_VOICES: {
-        // [WO] BA_BUFLEN overflow risk (variable length)
         LINFO("%d query amp voices message received", msg->type);
 
-        int replySizeEstimate = ((getAmpVoiceCount() * (36)) + 8);
-        LINFO("%d message size, %d buffer size", replySizeEstimate, BA_BUFLEN);
-        if (replySizeEstimate >= BA_BUFLEN) {
+        size_t replySizeEstimate = ((getAmpVoiceCount() * (36)) + 8);
+        LINFO("%lld message size, %lld buffer size",
+            replySizeEstimate, tcp->wbufferSize);
+        if (replySizeEstimate >= tcp->wbufferSize) {
             LWARN("reply message overflow risk");
         } // [WO] for now, this will just whine into stderr
         queryAmpVoicesReply(rmsg, wbuf);
@@ -368,15 +372,15 @@ int initWinsock(appInfo_t* app) {
 
     // Receive until the peer shuts down the connection
     // so I know that the memory is zeroed
-    tcp.rbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
-    tcp.wbuffer = (char*)calloc(BA_BUFLEN, sizeof(char));
+    tcp.rbuffer = (char*)calloc(tcp.rbufferSize, sizeof(char));
+    tcp.wbuffer = (char*)calloc(tcp.wbufferSize, sizeof(char));
 
     message_t reqMsg = { 0 };
     message_t repMsg = { 0 };
 
     do {
-        memset(tcp.rbuffer, 0, BA_BUFLEN);
-        memset(tcp.wbuffer, 0, BA_BUFLEN);
+        memset(tcp.rbuffer, 0, tcp.rbufferSize);
+        memset(tcp.wbuffer, 0, tcp.wbufferSize);
 
         reqMsg = (message_t){ 0 };
         repMsg = (message_t){ 0 };
@@ -401,7 +405,7 @@ int initWinsock(appInfo_t* app) {
             //      where this is the accounting for the message
             // and into `tcp.wbuffer`
             //      where this is the data for the message
-            status = processRequest(app, &reqMsg, &repMsg,
+            status = processRequest(app, &tcp, &reqMsg, &repMsg,
                 tcp.rbuffer, tcp.wbuffer);
             if (status == BA_ERROR_FATAL) {
                 LERROR("fatal port audio error while processing request message");
