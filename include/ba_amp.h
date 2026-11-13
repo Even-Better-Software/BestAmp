@@ -111,18 +111,6 @@ from the terminal)
 */
 void printAmpValues(ampValues_t* a);
 
-/**
-Test that a value is between BA_DIAL_MIN & BA_DIAL_MAX
-*/
-int testAmpValue(int value);
-
-
-/**
-Convert some integer value to a voice value.
-    `raw` -> the raw integer value
-    returns an `ampVoice_t` compliant enum
-*/
-ampVoiceType_t itoavt(int raw);
 
 void printAmpVoice(ampVoice_t* v);
 void printAmpVoices();

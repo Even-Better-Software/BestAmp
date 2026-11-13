@@ -67,24 +67,7 @@ void initAmpValues(ampValues_t* a)
 }
 
 
-int testAmpValue(int value)
-{
-    if (value < BA_DIAL_MIN || value > BA_DIAL_MAX)
-        return false;
-    return true;
-}
-
-static int clampedValue(int value)
-{
-    if (value < BA_DIAL_MIN)
-        return BA_DIAL_MIN;
-    if (value > BA_DIAL_MAX)
-        return BA_DIAL_MAX;
-    return value;
-}
-
-
-ampVoiceType_t itoavt(int raw) {
+static ampVoiceType_t itoavt(int raw) {
     switch (raw) {
         case (TEST): {
             return TEST;
@@ -97,8 +80,6 @@ ampVoiceType_t itoavt(int raw) {
         }
     }
 }
-
-
 
 
 void printAmpVoice(ampVoice_t* v)
