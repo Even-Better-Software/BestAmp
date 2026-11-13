@@ -10,7 +10,7 @@ void initTcpState(tcpState_t* tcp)
     tcp->rbufferSize = BA_BUFLEN;
     tcp->wbuffer = NULL;
     tcp->wbufferSize = BA_BUFLEN;
-    tcp->sts    = 0;
+    tcp->sts = 0;
 
     ZeroMemory(&tcp->hints, sizeof (tcp->hints));
     tcp->hints.ai_family     = AF_INET;
@@ -378,29 +378,61 @@ int initWinsock(appInfo_t* app) {
 
     message_t reqMsg = { 0 };
     message_t repMsg = { 0 };
-
+    
+    size_t readoffset = 0;
     do {
-        memset(tcp.rbuffer, 0, tcp.rbufferSize);
-        memset(tcp.wbuffer, 0, tcp.wbufferSize);
-
-        reqMsg = (message_t){ 0 };
-        repMsg = (message_t){ 0 };
-
-        // [WO] TODO safe read
-        status = recv(tcp.cSocket, tcp.rbuffer, tcp.rbufferSize, 0);
-
-        if (status > 0) {
-            // parse message
-            //      parse returns n < 0 it fails write bad message reply
-            // [WO] why does this exit the program?
-            status = parseMessage(&reqMsg, tcp.rbuffer);
-            if (status < 0) {
-                LERROR("bad message recieved");
-                badMessageReply(&repMsg, tcp.wbuffer);
+        // accept an incoming message at least the header size
+        do {
+            status = recv(tcp.cSocket,
+                (tcp.rbuffer + readoffset), 
+                (tcp.rbufferSize - readoffset), 0);
+            if (status == 0) {
+                LINFO("Connection closing...");
+                byeMessageReply(&repMsg, tcp.wbuffer);
+                tcp.sts = 1;
+                goto cleanup;
+            } else if (status < 0) {
+                LERROR("recv on incoming message failed: %d", WSAGetLastError());
+                byeMessageReply(&repMsg, tcp.wbuffer);
                 tcp.sts = 1;
                 exitCode = 1;
                 goto cleanup;
             }
+            readoffset += status;
+        } while (readoffset < BA_HEADER_SIZE_B);
+
+        // parse the message header determining if its a valid type of message
+        // and how much more reading, if any, is required to do over the wire
+        status = parseMessage(&reqMsg, tcp.rbuffer);
+        size_t request = BA_HEADER_SIZE_B + reqMsg.length;
+        if (status < 0) {
+            // dont process anything just write the bad message reply
+            LWARN("bad message recieved");
+            badMessageReply(&repMsg, tcp.wbuffer);
+        } else {
+            // in the case that there is more content to read of the message
+            if (readoffset < request) {
+                LWARN("did not read entire message");
+                do {
+                    status = recv(tcp.cSocket,
+                        (tcp.rbuffer + readoffset),
+                        (tcp.rbufferSize - readoffset), 0);
+                    if (status == 0) {
+                        LINFO("Connection closing...");
+                        byeMessageReply(&repMsg, tcp.wbuffer);
+                        tcp.sts = 1;
+                        goto cleanup;
+                    } else if (status < 0) {
+                        LERROR("recv on incoming message failed: %d", WSAGetLastError());
+                        byeMessageReply(&repMsg, tcp.wbuffer);
+                        tcp.sts = 1;
+                        exitCode = 1;
+                        goto cleanup;
+                    }
+                    readoffset += status;
+                } while (readoffset < request);
+            } 
+
             // process request / message (delegates to message handlers)
             // process message paths will write specific replies to `repMsg`
             //      where this is the accounting for the message
@@ -415,32 +447,47 @@ int initWinsock(appInfo_t* app) {
                 goto cleanup;
             }
             printMessage(&repMsg);
+        }
 
-            // send the reply
-            //      we don't explicity check this but this is the BA_CONTINUE path
-            status = send(tcp.cSocket, tcp.wbuffer,
-                repMsg.length + BA_HEADER_SIZE_B, 0);
+        // implementation of a safe send
+        //      keep calling `send` while the number of sent bytes is
+        //      less than what the message contains
+        size_t reply = BA_HEADER_SIZE_B + repMsg.length;
+        size_t sent = 0;
+        do {
+            status = send(tcp.cSocket, (tcp.wbuffer + sent),
+                reply - sent, 0);
             if (status == SOCKET_ERROR) {
                 LERROR("fatal error while submitting reply message");
                 exitCode = 1;
                 goto cleanup;
             }
+            sent += status;
+        } while (sent < reply);
+        LINFO("Bytes sent: %lld", sent);
 
-            LINFO("Bytes sent: %d", status);
-            tcp.sts = 0;
-
-        } else if (status == 0) {
-            LINFO("Connection closing...");
-            byeMessageReply(&repMsg, tcp.wbuffer);
-            tcp.sts = 1;
-            break;
+        // check if we read part of the next message, in which case we will
+        // need to shift me memory back by the number of bytes in the current
+        // complete message & also keep a read offset which would be incremented
+        // by the number of bytes in the next message
+        //      `leftovers`
+        //          the actual number of extra bytes
+        //      `readoffset`
+        //          meaning where the next read should start ie the end of the leftover bytes
+        size_t leftovers = readoffset - request;
+        if (leftovers > 0) {
+            memmove(tcp.rbuffer, tcp.rbuffer + request, leftovers);
+            readoffset = leftovers;
         } else {
-            LERROR("recv on incoming message failed: %d", WSAGetLastError());
-            byeMessageReply(&repMsg, tcp.wbuffer);
-            tcp.sts = 1;
-            exitCode = 1;
-            goto cleanup;
+            memset(tcp.rbuffer, 0, tcp.rbufferSize);
+            readoffset = 0;
         }
+        memset(tcp.wbuffer, 0, tcp.wbufferSize);
+
+        memset(&repMsg, 0, sizeof(message_t));
+        memset(&repMsg, 0, sizeof(message_t));
+        
+        tcp.sts = 0;
 
     } while (1);
 

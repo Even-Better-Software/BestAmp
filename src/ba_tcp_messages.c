@@ -17,6 +17,14 @@ int parseMessage(message_t* pMsg, char* msg)
     memcpy(&lengthByte, (msg + BA_NUMERIC_FIELD_B), BA_NUMERIC_FIELD_B);
     lengthByte = ntohl(lengthByte);
 
+    if (lengthByte == 0) {
+        pMsg->length = 0;
+    } else if (lengthByte > 0) {
+        pMsg->length = lengthByte;
+        pMsg->data_off = BA_HEADER_SIZE_B;
+    }
+
+    // determine if the message is valid
     switch (typeByte) {
     case KILL:
         pMsg->type = KILL;
@@ -41,13 +49,6 @@ int parseMessage(message_t* pMsg, char* msg)
         break;
     default:
         return -1;
-    }
-     
-    if (lengthByte == 0) {
-        pMsg->length = 0;
-    } else if (lengthByte > 0) {
-        pMsg->length = lengthByte;
-        pMsg->data_off = BA_HEADER_SIZE_B;
     }
 
     return 0;

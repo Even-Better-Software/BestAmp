@@ -38,7 +38,7 @@ typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
-    int     sts;    // stuff to send
+    int sts;                                // stuff to send
     char*   rbuffer; size_t  rbufferSize;
     char*   wbuffer; size_t  wbufferSize;
     struct addrinfo*    result;
