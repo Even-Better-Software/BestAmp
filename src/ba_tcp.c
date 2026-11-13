@@ -189,7 +189,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
             replySizeEstimate, tcp->wbufferSize);
         if (replySizeEstimate >= tcp->wbufferSize) {
             LWARN("reply message overflow risk");
-            BA_QRALWRP(replySizeEstimate);
+            BA_GROW_WBUFFER(replySizeEstimate);
         }
 
         queryHostApisReply(rmsg, tcp->wbuffer, &reply);
@@ -268,7 +268,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
             replySizeEstimate, tcp->wbufferSize);
         if (replySizeEstimate >=tcp->wbufferSize) {
             LWARN("reply message overflow risk");
-            BA_QRALWRP(replySizeEstimate);
+            BA_GROW_WBUFFER(replySizeEstimate);
         }
 
         queryDevicesReply(rmsg, tcp->wbuffer, &reply);
@@ -286,7 +286,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
             replySizeEstimate, tcp->wbufferSize);
         if (replySizeEstimate >= tcp->wbufferSize) {
             LWARN("reply message overflow risk");
-            BA_QRALWRP(replySizeEstimate);
+            BA_GROW_WBUFFER(replySizeEstimate);
         }
         queryAmpVoicesReply(rmsg, tcp->wbuffer);
 

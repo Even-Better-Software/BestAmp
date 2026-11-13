@@ -22,7 +22,7 @@
 
 // perhaps this is a step too far...
 // this macro is useless unless it is used within the `processRequest` function
-#define BA_QRALWRP(est) while (est > tcp->wbufferSize) { \
+#define BA_GROW_WBUFFER(est) while (est > tcp->wbufferSize) { \
     ptrdiff_t nt = bufRealloc(&tcp->wbuffer, tcp->wbufferSize); \
     if (nt == -1) return BA_ERROR_FATAL; \
     LINFO("new buffer size %lld", nt); \
