@@ -12,7 +12,7 @@ SRC_DIR     = src
 MAIN        = $(SRC_DIR)/main.c
 
 BA_COMMON   = $(SRC_DIR)/ba_common.c
-BA_COMMON_O = $(SRC_DIR)/ba_common.o
+BA_COMMON_O = $(BUILD_DIR)/ba_common.o
 BA_DSP      = $(SRC_DIR)/ba_dsp.c
 BA_DSP_O    = $(BUILD_DIR)/ba_dsp.o
 BA_AMP      = $(SRC_DIR)/ba_amp.c

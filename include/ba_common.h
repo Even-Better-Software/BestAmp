@@ -17,14 +17,14 @@
 #define BA_PORT_I (7081)
 
 // [WO] inital buffer size
-#define BA_BUFLEN (4096)
+#define BA_BUFLEN (64)
 // [WO] 1MB max possible buffer size
 #define BA_BUFLEN_ABS (1024*1024)
 
 #define BA_INFO    "\033[32m[INFO]\033[0m "
 #define BA_WARN    "\033[33m[WARN]\033[0m "
 #define BA_ERROR   "\033[31m[ERROR]\033[0m "
-#define BA_UNIMPLEMENTED "\e[33m[UNIMPLEMENTED]\e[0m"
+
 
 #define LINFO(fmt, ...) do {                            \
         time_t rawtime;                                 \
@@ -47,7 +47,7 @@
             "%Y-%m-%d %H:%M:%S", &timeinfo);            \
         fprintf((stderr), BA_WARN "[%s] " fmt "\n",     \
             timebuffer, ##__VA_ARGS__);                 \
-    } while (0);
+    } while (0)
 #define LERROR(fmt, ...) do {                           \
         time_t rawtime;                                 \
         struct tm timeinfo;                             \
@@ -58,13 +58,13 @@
             "%Y-%m-%d %H:%M:%S", &timeinfo);            \
         fprintf((stderr), BA_ERROR "[%s] " fmt "\n",    \
             timebuffer, ##__VA_ARGS__);                 \
-    } while (0);
+    } while (0)
 
 
 /**
 doubles the given buffer `buf` from `bufSize`, returns the new buffer size.
 */
-int bufRealloc(char** buf, size_t bufSize);
+ptrdiff_t bufRealloc(char** buf, size_t bufSize);
 
 
 #endif

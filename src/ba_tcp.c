@@ -30,7 +30,7 @@ void cleanupTcpState(tcpState_t* tcp)
 
 
 int processRequest(appInfo_t* app, tcpState_t* tcp,
-    message_t* msg, message_t* rmsg, char* rbuf, char* wbuf
+    message_t* msg, message_t* rmsg
 ) {
     PaError err;
 
@@ -43,7 +43,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         baPrefs_t pTemp;
         updatePrefsRep_t reply = {0};
         initBaPrefs(&pTemp);
-        parsePrefsFromMsg(&pTemp, msg, rbuf);
+        parsePrefsFromMsg(&pTemp, msg, tcp->rbuffer);
         printBaPrefs(&pTemp);
         coalesceBaPrefsToPaDefaults(&pTemp);
         printBaPrefs(&pTemp);
@@ -79,7 +79,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
             LWARN("format supported error: %s", Pa_GetErrorText(err));
             // badMessageReply(rmsg, wbuf);
             reply.code = 1;
-            updatePreferencesReply(rmsg, wbuf, &reply);
+            updatePreferencesReply(rmsg, tcp->rbuffer, &reply);
             return BA_CONTINUE;
         }
         // Format supported, so pTemp becomes app->prefs
@@ -110,7 +110,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         if (err != paNoError) {
             LWARN("portaudio stream open error: %s", Pa_GetErrorText(err));
             reply.code = 1;
-            updatePreferencesReply(rmsg, wbuf, &reply);
+            updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
             return BA_CONTINUE;
         }
         app->streamOpen = 1;
@@ -118,7 +118,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         if (err != paNoError) {
             LWARN("portaudio start stream error: %s", Pa_GetErrorText(err));
             reply.code = 1;
-            updatePreferencesReply(rmsg, wbuf, &reply);
+            updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
             return BA_CONTINUE;
         }
         LINFO("portaudio stream started");
@@ -126,7 +126,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
 
         // Send the update prefs OK reply
         reply.code = 0;
-        updatePreferencesReply(rmsg, wbuf, &reply);
+        updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
         return BA_CONTINUE;
 
     }
@@ -135,7 +135,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
 
         ampValues_t avTemp;
         initAmpValues(&avTemp);
-        parseAmpValuesFromMsg(&avTemp, msg, rbuf);
+        parseAmpValuesFromMsg(&avTemp, msg, tcp->rbuffer);
         printAmpValues(&avTemp);
         ampVoice_t cVoice = getAmpVoice(avTemp.voice);
         // recalculate biquads
@@ -155,7 +155,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         //      say that a bad voice value is supplied, we should tell the
         //      client about this & then use the default voice (voice 0)
         app->ampValues = avTemp;
-        genericOkReply(rmsg, wbuf);
+        genericOkReply(rmsg, tcp->wbuffer);
         return BA_CONTINUE;
 
     }
@@ -187,11 +187,12 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         size_t replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
         LINFO("%lld message size, %lld buffer size",
             replySizeEstimate, tcp->wbufferSize);
-        if (replySizeEstimate >= BA_BUFLEN) {
+        if (replySizeEstimate >= tcp->wbufferSize) {
             LWARN("reply message overflow risk");
-        } // [WO] for now, this will just whine into stderr
+            BA_QRALWRP(replySizeEstimate);
+        }
 
-        queryHostApisReply(rmsg, wbuf, &reply);
+        queryHostApisReply(rmsg, tcp->wbuffer, &reply);
         free(hostApis);
 
         return BA_CONTINUE;
@@ -219,7 +220,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         reply.hostApiCount = hostApiCount;
         reply.hostApis = hostApis;
 
-        queryHostApisReply(rmsg, wbuf, &reply);
+        queryHostApisReply(rmsg, tcp->wbuffer, &reply);
         free(hostApis);
 
         return BA_CONTINUE;
@@ -230,7 +231,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
 
         int hostApiIdx = 0;
         queryDeviceRep_t reply = {0};
-        parseDeviceQueryFromMsg(&hostApiIdx, msg, rbuf);
+        parseDeviceQueryFromMsg(&hostApiIdx, msg, tcp->rbuffer);
 
         LINFO("query devices for %d host API idx", hostApiIdx);
 
@@ -240,7 +241,7 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
         const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
         if (hostApi == NULL) {
             LWARN("used supplied host API idx was bad");
-            queryDevicesBadReply(rmsg, wbuf);
+            queryDevicesBadReply(rmsg, tcp->wbuffer);
             return BA_CONTINUE;
         }
         reply.hostApiIdx = hostApiIdx;
@@ -267,9 +268,10 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
             replySizeEstimate, tcp->wbufferSize);
         if (replySizeEstimate >=tcp->wbufferSize) {
             LWARN("reply message overflow risk");
-        } // [WO] for now, this will just whine into stderr
+            BA_QRALWRP(replySizeEstimate);
+        }
 
-        queryDevicesReply(rmsg, wbuf, &reply);
+        queryDevicesReply(rmsg, tcp->wbuffer, &reply);
 
         free(reply.deviceIdxes);
         free(reply.devices);
@@ -284,8 +286,9 @@ int processRequest(appInfo_t* app, tcpState_t* tcp,
             replySizeEstimate, tcp->wbufferSize);
         if (replySizeEstimate >= tcp->wbufferSize) {
             LWARN("reply message overflow risk");
-        } // [WO] for now, this will just whine into stderr
-        queryAmpVoicesReply(rmsg, wbuf);
+            BA_QRALWRP(replySizeEstimate);
+        }
+        queryAmpVoicesReply(rmsg, tcp->wbuffer);
 
         return BA_CONTINUE;
     }
@@ -397,8 +400,7 @@ int initWinsock(appInfo_t* app) {
             //      where this is the accounting for the message
             // and into `tcp.wbuffer`
             //      where this is the data for the message
-            status = processRequest(app, &tcp, &reqMsg, &repMsg,
-                tcp.rbuffer, tcp.wbuffer);
+            status = processRequest(app, &tcp, &reqMsg, &repMsg);
             if (status == BA_ERROR_FATAL) {
                 LERROR("fatal port audio error while processing request message");
                 badMessageReply(&repMsg, tcp.wbuffer);

@@ -20,6 +20,13 @@
 #define BA_ERROR_FATAL  (-2)
 #define BA_KILL         (-3)
 
+// perhaps this is a step too far...
+// this macro is useless unless it is used within the `processRequest` function
+#define BA_QRALWRP(est) while (est > tcp->wbufferSize) { \
+    ptrdiff_t nt = bufRealloc(&tcp->wbuffer, tcp->wbufferSize); \
+    if (nt == -1) return BA_ERROR_FATAL; \
+    LINFO("new buffer size %lld", nt); \
+    tcp->wbufferSize = nt; }
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
 
@@ -43,7 +50,7 @@ Process a request, reads from `msg`, replies will be written to `rmsg`.
     `msg` & `rmsg` must be initialized.
 */
 int processRequest(appInfo_t* app, tcpState_t* tcp, 
-    message_t* msg, message_t* rmsg, char* rbuf, char* wbuf);
+    message_t* msg, message_t* rmsg);
 
 /**
 Windows Socket TCP Loop.
