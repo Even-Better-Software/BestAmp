@@ -74,6 +74,15 @@ int testAmpValue(int value)
     return true;
 }
 
+static int clampedValue(int value)
+{
+    if (value < BA_DIAL_MIN)
+        return BA_DIAL_MIN;
+    if (value > BA_DIAL_MAX)
+        return BA_DIAL_MAX;
+    return value;
+}
+
 
 ampVoiceType_t itoavt(int raw) {
     switch (raw) {
@@ -131,12 +140,13 @@ void setAmpVoiceType(ampValues_t* a, int rawVoice)
 
 void setAmpGain(ampValues_t* a, int gainValue)
 {
-    if (testAmpValue(gainValue)) {
+    /*if (testAmpValue(gainValue)) {
         a->gain = gainValue;
     }
     else {
         a->gain = BA_DIAL_MIN;
-    }
+    }*/
+    a->gain = BA_DIAL_CLAMP(gainValue);
     ampVoice_t v = getAmpVoice(a->voice);
 
     /*
@@ -150,12 +160,13 @@ void setAmpGain(ampValues_t* a, int gainValue)
 
 void setAmpBass(ampValues_t* a, int bassValue)
 {
-    if (testAmpValue(bassValue)) {
+    /*if (testAmpValue(bassValue)) {
         a->bass = bassValue;
     }
     else {
         a->bass = BA_DIAL_MIN;
-    }
+    }*/
+    a->bass = BA_DIAL_CLAMP(bassValue);
     ampVoice_t v = getAmpVoice(a->voice);
 
     a->bassDb = BA_ITODB_RANGE(bassValue, v.bassRange_db);
@@ -165,12 +176,13 @@ void setAmpBass(ampValues_t* a, int bassValue)
 
 void setAmpTreble(ampValues_t* a, int trebleValue)
 {
-    if (testAmpValue(trebleValue)) {
+    /*if (testAmpValue(trebleValue)) {
         a->treble = trebleValue;
     }
     else {
         a->treble = BA_DIAL_MIN;
-    }
+    }*/
+    a->treble = BA_DIAL_CLAMP(trebleValue);
     ampVoice_t v = getAmpVoice(a->voice);
 
     a->trebleDb = BA_ITODB_RANGE(trebleValue, v.trebRange_db);
@@ -180,11 +192,12 @@ void setAmpTreble(ampValues_t* a, int trebleValue)
 
 void setAmpPower(ampValues_t* a, int powerValue)
 {
-    if (testAmpValue(powerValue))
+    /*if (testAmpValue(powerValue))
         a->power = powerValue;
     else {
         a->power = BA_DIAL_MIN;
-    }
+    }*/
+    a->power = BA_DIAL_CLAMP(powerValue);
     ampVoice_t v = getAmpVoice(a->voice);
 
     a->powerDb = BA_ITODB(powerValue, v.maxPower_db, v.minPower_db);

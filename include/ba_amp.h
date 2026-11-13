@@ -38,6 +38,8 @@ https://staff.fnwi.uva.nl/r.vandenboomgaard/SignalProcessing/SystemsSignals/deci
 
 #define BA_DIAL_MIN (0)
 #define BA_DIAL_MAX (10)
+#define BA_DIAL_CLAMP(value) \
+    ((value) > BA_DIAL_MAX) ? BA_DIAL_MAX : ((value) < BA_DIAL_MIN) ? BA_DIAL_MIN : (value)
 
 #define BA_VTOM(value) \
     (powf)((10),((value)/(20.0f)))
