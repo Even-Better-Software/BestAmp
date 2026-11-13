@@ -382,7 +382,6 @@ int initWinsock(appInfo_t* app) {
 
     do {
         // accept an incoming message at least the header size
-        int received = 0;
         do {
             status = recv(tcp.cSocket,
                 (tcp.rbuffer + tcp.readoffset), 
@@ -400,22 +399,15 @@ int initWinsock(appInfo_t* app) {
                 goto cleanup;
             }
             tcp.readoffset += status;
-        } while (received < BA_HEADER_SIZE_B);
+        } while (tcp.readoffset < BA_HEADER_SIZE_B);
 
         // parse the message header determining if its a valid type of message
         // and how much more reading, if any, is required to do over the wire
         status = parseMessage(&reqMsg, tcp.rbuffer);
         if (status < 0) {
+            // dont process anything just write the bad message reply
             LWARN("bad message recieved");
             badMessageReply(&repMsg, tcp.wbuffer);
-            // [WO] shouldnt have to terminate the audio engine if the message
-            // recevied is not a valid one just let the client know their 
-            // message was not valid
-            /*
-            tcp.sts = 1;
-            exitCode = 1;
-            goto cleanup;
-            */
         } else {
             // in the case that there is more content to read of the message
             if (tcp.readoffset < (BA_HEADER_SIZE_B + reqMsg.length)) {
