@@ -11,7 +11,6 @@ void initTcpState(tcpState_t* tcp)
     tcp->wbuffer = NULL;
     tcp->wbufferSize = BA_BUFLEN;
     tcp->sts = 0;
-    tcp->readoffset = 0;
 
     ZeroMemory(&tcp->hints, sizeof (tcp->hints));
     tcp->hints.ai_family     = AF_INET;
@@ -379,13 +378,14 @@ int initWinsock(appInfo_t* app) {
 
     message_t reqMsg = { 0 };
     message_t repMsg = { 0 };
-
+    
+    size_t readoffset = 0;
     do {
         // accept an incoming message at least the header size
         do {
             status = recv(tcp.cSocket,
-                (tcp.rbuffer + tcp.readoffset), 
-                (tcp.rbufferSize - tcp.readoffset), 0);
+                (tcp.rbuffer + readoffset), 
+                (tcp.rbufferSize - readoffset), 0);
             if (status == 0) {
                 LINFO("Connection closing...");
                 byeMessageReply(&repMsg, tcp.wbuffer);
@@ -398,24 +398,25 @@ int initWinsock(appInfo_t* app) {
                 exitCode = 1;
                 goto cleanup;
             }
-            tcp.readoffset += status;
-        } while (tcp.readoffset < BA_HEADER_SIZE_B);
+            readoffset += status;
+        } while (readoffset < BA_HEADER_SIZE_B);
 
         // parse the message header determining if its a valid type of message
         // and how much more reading, if any, is required to do over the wire
         status = parseMessage(&reqMsg, tcp.rbuffer);
+        size_t request = BA_HEADER_SIZE_B + reqMsg.length;
         if (status < 0) {
             // dont process anything just write the bad message reply
             LWARN("bad message recieved");
             badMessageReply(&repMsg, tcp.wbuffer);
         } else {
             // in the case that there is more content to read of the message
-            if (tcp.readoffset < (BA_HEADER_SIZE_B + reqMsg.length)) {
+            if (readoffset < request) {
                 LWARN("did not read entire message");
                 do {
                     status = recv(tcp.cSocket,
-                        (tcp.rbuffer + tcp.readoffset),
-                        (tcp.rbufferSize - tcp.readoffset), 0);
+                        (tcp.rbuffer + readoffset),
+                        (tcp.rbufferSize - readoffset), 0);
                     if (status == 0) {
                         LINFO("Connection closing...");
                         byeMessageReply(&repMsg, tcp.wbuffer);
@@ -428,8 +429,8 @@ int initWinsock(appInfo_t* app) {
                         exitCode = 1;
                         goto cleanup;
                     }
-                    tcp.readoffset += status;
-                } while (tcp.readoffset < (BA_HEADER_SIZE_B + reqMsg.length));
+                    readoffset += status;
+                } while (readoffset < request);
             } 
 
             // process request / message (delegates to message handlers)
@@ -451,18 +452,19 @@ int initWinsock(appInfo_t* app) {
         // implementation of a safe send
         //      keep calling `send` while the number of sent bytes is
         //      less than what the message contains
-        int sent = 0;
+        size_t reply = BA_HEADER_SIZE_B + repMsg.length;
+        size_t sent = 0;
         do {
             status = send(tcp.cSocket, (tcp.wbuffer + sent),
-                (repMsg.length + BA_HEADER_SIZE_B) - sent, 0);
+                reply - sent, 0);
             if (status == SOCKET_ERROR) {
                 LERROR("fatal error while submitting reply message");
                 exitCode = 1;
                 goto cleanup;
             }
             sent += status;
-        } while (sent < repMsg.length + BA_HEADER_SIZE_B);
-        LINFO("Bytes sent: %d", sent);
+        } while (sent < reply);
+        LINFO("Bytes sent: %lld", sent);
 
         // check if we read part of the next message, in which case we will
         // need to shift me memory back by the number of bytes in the current
@@ -470,16 +472,15 @@ int initWinsock(appInfo_t* app) {
         // by the number of bytes in the next message
         //      `leftovers`
         //          the actual number of extra bytes
-        //      `tcp.readoffset`
+        //      `readoffset`
         //          meaning where the next read should start ie the end of the leftover bytes
-        size_t current = BA_HEADER_SIZE_B + reqMsg.length;
-        size_t leftovers = tcp.readoffset - current;
+        size_t leftovers = readoffset - request;
         if (leftovers > 0) {
-            memmove(tcp.rbuffer, tcp.rbuffer + current, leftovers);
-            tcp.readoffset = leftovers;
+            memmove(tcp.rbuffer, tcp.rbuffer + request, leftovers);
+            readoffset = leftovers;
         } else {
             memset(tcp.rbuffer, 0, tcp.rbufferSize);
-            tcp.readoffset = 0;
+            readoffset = 0;
         }
         memset(tcp.wbuffer, 0, tcp.wbufferSize);
 
