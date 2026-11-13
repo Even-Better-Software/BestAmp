@@ -15,10 +15,14 @@
 #include "ba_tcp_messages.h"
 
 
-#define BA_CONTINUE     (0)
-#define BA_ERROR_FORMAT (-1)
-#define BA_ERROR_FATAL  (-2)
-#define BA_KILL         (-3)
+// #define BA_CONTINUE     (0)
+// #define BA_ERROR_FATAL  (-2)
+// #define BA_KILL         (-3)
+
+typedef enum BA_PROCESS_REQUEST_RETURN_CODES {
+    BA_ERROR_FATAL  = -2,
+    BA_CONTINUE     = 0
+} processRequest_t;
 
 // perhaps this is a step too far...
 // this macro is useless unless it is used within the `processRequest` function
@@ -49,7 +53,7 @@ void cleanupTcpState(tcpState_t* tcp);
 Process a request, reads from `msg`, replies will be written to `rmsg`.
     `msg` & `rmsg` must be initialized.
 */
-int processRequest(appInfo_t* app, tcpState_t* tcp, 
+processRequest_t processRequest(appInfo_t* app, tcpState_t* tcp, 
     message_t* msg, message_t* rmsg);
 
 /**
