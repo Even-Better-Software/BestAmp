@@ -15,29 +15,28 @@
 #include "ba_tcp_messages.h"
 
 
-#define BA_PORT "7080"
-#define BA_PORT_I (7081)
-#define BA_BUFLEN (4096)
-
 #define BA_CONTINUE     (0)
 #define BA_ERROR_FORMAT (-1)
 #define BA_ERROR_FATAL  (-2)
 #define BA_KILL         (-3)
 
+// perhaps this is a step too far...
+// this macro is useless unless it is used within the `processRequest` function
+#define BA_GROW_WBUFFER(est) while (est > tcp->wbufferSize) { \
+    ptrdiff_t nt = bufRealloc(&tcp->wbuffer, tcp->wbufferSize); \
+    if (nt == -1) return BA_ERROR_FATAL; \
+    LINFO("new buffer size %lld", nt); \
+    tcp->wbufferSize = nt; }
 
 // https://learn.microsoft.com/en-us/windows/win32/winsock/initializing-winsock
-
-
-extern char* BA_NO_CONTENT;
-
 
 typedef struct BA_TCP_STATE {
     WSADATA wsaData;
     SOCKET  sSocket;
     SOCKET  cSocket;
     int     sts;    // stuff to send
-    char*   rbuffer;
-    char*   wbuffer;
+    char*   rbuffer; size_t  rbufferSize;
+    char*   wbuffer; size_t  wbufferSize;
     struct addrinfo*    result;
     struct addrinfo     hints;
 } tcpState_t;
@@ -50,8 +49,8 @@ void cleanupTcpState(tcpState_t* tcp);
 Process a request, reads from `msg`, replies will be written to `rmsg`.
     `msg` & `rmsg` must be initialized.
 */
-int processRequest(appInfo_t* app, message_t* msg, message_t* rmsg,
-    char* rbuf, char* wbuf);
+int processRequest(appInfo_t* app, tcpState_t* tcp, 
+    message_t* msg, message_t* rmsg);
 
 /**
 Windows Socket TCP Loop.

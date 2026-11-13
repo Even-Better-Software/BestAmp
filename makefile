@@ -11,6 +11,8 @@ TARGET      = $(BUILD_DIR)/BestAmp.exe
 SRC_DIR     = src
 MAIN        = $(SRC_DIR)/main.c
 
+BA_COMMON   = $(SRC_DIR)/ba_common.c
+BA_COMMON_O = $(BUILD_DIR)/ba_common.o
 BA_DSP      = $(SRC_DIR)/ba_dsp.c
 BA_DSP_O    = $(BUILD_DIR)/ba_dsp.o
 BA_AMP      = $(SRC_DIR)/ba_amp.c
@@ -46,6 +48,9 @@ $(BUILD_DIR):
 > mkdir -p $(BUILD_DIR)
 
 
+$(BA_COMMON_O): $(BA_COMMON) | $(BUILD_DIR)
+> $(CC) $(BA_COMMON) -o $(BA_COMMON_O) -c $(CFLAGS)
+
 $(BA_DSP_O): $(BA_DSP) | $(BUILD_DIR)
 > $(CC) $(BA_DSP) -o $(BA_DSP_O) -c $(CFLAGS)
 
@@ -69,6 +74,7 @@ $(BA_TCP_MESSAGES_O): $(BA_TCP_MESSAGES) | $(BUILD_DIR)
 
 
 $(TARGET): $(MAIN) \
+    $(BA_COMMON_O) \
     $(BA_DSP_O) \
     $(BA_AMP_O) \
     $(BA_PREFS_O) \
@@ -76,11 +82,12 @@ $(TARGET): $(MAIN) \
     $(BA_PORTAUDIO_CB_O) \
     $(BA_TCP_O) \
     $(BA_TCP_MESSAGES_O) | $(BUILD_DIR)
-> $(CC) $(MAIN) $(BA_DSP_O) $(BA_AMP_O) $(BA_PREFS_O) $(BA_PORTAUDIO_HELPERS_O) $(BA_PORTAUDIO_CB_O) $(BA_TCP_MESSAGES_O) $(BA_TCP_O) -o $@ $(CFLAGS) $(LDFLAGS)
+> $(CC) $(MAIN) $(BUILD_DIR)/*.o -o $@ $(CFLAGS) $(LDFLAGS)
 
 
-$(STATS_TARGET): $(STATS) $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
-> $(CC) $(STATS) $(BA_PORTAUDIO_HELPERS_O) -o $@ $(CFLAGS) $(LDFLAGS)
+$(STATS_TARGET): $(STATS) \
+    $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
+> $(CC) $(STATS) $(BUILD_DIR)/*.o -o $@ $(CFLAGS) $(LDFLAGS)
 
 
 $(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
