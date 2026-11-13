@@ -416,15 +416,20 @@ int initWinsock(appInfo_t* app) {
             }
             printMessage(&repMsg);
 
-            // send the reply
-            //      we don't explicity check this but this is the BA_CONTINUE path
-            status = send(tcp.cSocket, tcp.wbuffer,
-                repMsg.length + BA_HEADER_SIZE_B, 0);
-            if (status == SOCKET_ERROR) {
-                LERROR("fatal error while submitting reply message");
-                exitCode = 1;
-                goto cleanup;
-            }
+            // implementation of a safe send
+            //      keep calling `send` while the number of sent bytes is
+            //      less than what the message contains
+            int sent = 0;
+            do {
+                status = send(tcp.cSocket, (tcp.wbuffer + sent),
+                    (repMsg.length + BA_HEADER_SIZE_B) - sent, 0);
+                if (status == SOCKET_ERROR) {
+                    LERROR("fatal error while submitting reply message");
+                    exitCode = 1;
+                    goto cleanup;
+                }
+                sent += status;
+            } while (sent < repMsg.length + BA_HEADER_SIZE_B);
 
             LINFO("Bytes sent: %d", status);
             tcp.sts = 0;
