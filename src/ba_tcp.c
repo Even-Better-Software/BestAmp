@@ -408,7 +408,7 @@ int initWinsock(appInfo_t* app) {
             //      where this is the data for the message
             status = processRequest(app, &tcp, &reqMsg, &repMsg);
             if (status == BA_ERROR_FATAL) {
-                LERROR("fatal port audio error while processing request message");
+                LERROR("fatal error while processing request message");
                 badMessageReply(&repMsg, tcp.wbuffer);
                 tcp.sts = 1;
                 exitCode = 1;
