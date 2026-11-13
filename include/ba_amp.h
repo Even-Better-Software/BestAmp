@@ -38,6 +38,8 @@ https://staff.fnwi.uva.nl/r.vandenboomgaard/SignalProcessing/SystemsSignals/deci
 
 #define BA_DIAL_MIN (0)
 #define BA_DIAL_MAX (10)
+#define BA_DIAL_CLAMP(value) \
+    ((value) > BA_DIAL_MAX) ? BA_DIAL_MAX : ((value) < BA_DIAL_MIN) ? BA_DIAL_MIN : (value)
 
 #define BA_VTOM(value) \
     (powf)((10),((value)/(20.0f)))
@@ -109,18 +111,6 @@ from the terminal)
 */
 void printAmpValues(ampValues_t* a);
 
-/**
-Test that a value is between BA_DIAL_MIN & BA_DIAL_MAX
-*/
-int testAmpValue(int value);
-
-
-/**
-Convert some integer value to a voice value.
-    `raw` -> the raw integer value
-    returns an `ampVoice_t` compliant enum
-*/
-ampVoiceType_t itoavt(int raw);
 
 void printAmpVoice(ampVoice_t* v);
 void printAmpVoices();
