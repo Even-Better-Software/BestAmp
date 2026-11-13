@@ -17,7 +17,7 @@
 #define BA_PORT_I (7081)
 
 // [WO] inital buffer size
-#define BA_BUFLEN (64)
+#define BA_BUFLEN (4096)
 // [WO] 1MB max possible buffer size
 #define BA_BUFLEN_ABS (1024*1024)
 
