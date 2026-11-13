@@ -29,7 +29,7 @@ void cleanupTcpState(tcpState_t* tcp)
 
 
 
-int processRequest(appInfo_t* app, tcpState_t* tcp,
+processRequest_t processRequest(appInfo_t* app, tcpState_t* tcp,
     message_t* msg, message_t* rmsg
 ) {
     PaError err;
