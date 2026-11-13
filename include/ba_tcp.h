@@ -16,9 +16,8 @@
 
 
 #define BA_CONTINUE     (0)
-#define BA_ERROR_FORMAT (-1)
 #define BA_ERROR_FATAL  (-2)
-#define BA_KILL         (-3)
+// #define BA_KILL         (-3)
 
 // perhaps this is a step too far...
 // this macro is useless unless it is used within the `processRequest` function
