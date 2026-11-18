@@ -320,6 +320,12 @@
                     break;
                 }
 
+                if (Devices.Count == 0)
+                {
+                    Devices[apiInfo.DefaultInDevice] = new DeviceInfo() { Name = "N/A" };
+                    Devices[apiInfo.DefaultOutDevice] = new DeviceInfo() { Name = "N/A" };
+                }
+
                 Settings.DeviceIn = apiInfo.DefaultInDevice;
                 Settings.DeviceOut = apiInfo.DefaultOutDevice;
                 Settings.ChannelIn = MaxChannelIn();
