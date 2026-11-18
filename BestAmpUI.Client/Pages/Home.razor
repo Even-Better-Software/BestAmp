@@ -496,13 +496,15 @@
             return;
         }
 
+        Profiles = UserPrefs!.Profiles;
+
         try
         {
-            Dials = UserPrefs!.Profiles[UserPrefs.CurrentProfile];
+            Dials = Profiles[UserPrefs.CurrentProfile];
         }
         catch (KeyNotFoundException)
         {
-            Dials = UserPrefs!.Profiles[UserPrefs.DEFAULT];
+            Dials = Profiles[UserPrefs.DEFAULT];
         }
 
         LoadDials();
