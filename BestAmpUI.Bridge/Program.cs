@@ -78,6 +78,15 @@ audioEngine.Start();
 Console.WriteLine("audio engine spawned successfully");
 
 
+// Spawn a browser process
+Process renderer = new Process();
+audioEngine.StartInfo.UseShellExecute = true;
+audioEngine.StartInfo.FileName = "http://localhost:7081";
+audioEngine.StartInfo.CreateNoWindow = false;
+audioEngine.Start();
+Console.WriteLine("renderer spawned successfully");
+
+
 // Webserver options
 // Ammend this to server the compiled audio engine front-end from the distributed path
 // [WO] override the wwwroot path from an environment variable for development purposes
@@ -174,7 +183,7 @@ app.Map(ENDPOINT_BACKEND, async context =>
         browserToTcp.Dispose();
         tcpToBrowser.Dispose();
 
-        CleanUpProcesess(audioEngine);
+        CleanUpProcesess(audioEngine, renderer);
         Environment.Exit(0);
     }
 });
@@ -220,9 +229,10 @@ app.Run(BRIDGE_ADDRESS);
 
 //**-------------------------------------------------------**//
 
-static void CleanUpProcesess(Process audioEngine)
+static void CleanUpProcesess(Process? audioEngine = null, Process? renderer = null)
 {
-    audioEngine.Kill(); 
+    audioEngine?.Kill(); 
+    // renderer?.Kill();
 }
 
 /**
@@ -291,5 +301,5 @@ static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream
 
 /* cleanup application resources */
 
-CleanUpProcesess(audioEngine);
+CleanUpProcesess(audioEngine, renderer);
 
