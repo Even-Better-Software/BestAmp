@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Net.Mime;
 using System.Net.Sockets;
 using System.Net.WebSockets;
@@ -46,6 +47,33 @@ const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
 
 //**-------------------------------------------------------**//
 
+/*  BestAmp audio engine initialization
+*/
+
+
+// Resolve the audio engine binary path
+// Spawn the audio engine
+string EXPECTED_BA_DIR = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "BestAmp");
+string EXPECTED_BA_BIN = Path.Combine(
+    EXPECTED_BA_DIR, "audio-engine", "BestAmp.exe");
+
+Console.Out.WriteLine($"{EXPECTED_BA_DIR}");
+Console.Out.WriteLine($"{EXPECTED_BA_BIN}");
+
+if (!Path.Exists(EXPECTED_BA_BIN))
+{
+    Console.Error.WriteLine("Missing BestAmp binary check you installation");
+    Environment.Exit(1);
+}
+Process myProcess = new Process();
+myProcess.StartInfo.UseShellExecute = true;
+myProcess.StartInfo.FileName = EXPECTED_BA_BIN;
+myProcess.StartInfo.CreateNoWindow = false;
+myProcess.Start();
+Console.WriteLine("audio engine spawned successfully");
+
+
 WebSocketOptions sockOptions = new()
 {
     KeepAliveInterval = TimeSpan.FromSeconds(KEEP_ALIVE_INTERVAL),
@@ -59,6 +87,7 @@ builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => pol
 ));
 
 WebApplication app = builder.Build();
+
 app.UseCors(CORS_POLICY);
 app.UseWebSockets(sockOptions);
 app.UseDefaultFiles();
@@ -213,3 +242,7 @@ static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream
         await tcpStream.WriteAsync(buffer.AsMemory(0, result.Count), cancelToken);
     }
 }
+
+
+Console.WriteLine("terminating the audio engine");
+myProcess.Kill();
