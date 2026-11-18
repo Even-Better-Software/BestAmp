@@ -6,14 +6,4 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="../BestAmpUI.Client/BestAmpUI.Client.csproj">
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>ResolvedFileToPublish</OutputItemType>
-            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-            <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-        </ProjectReference>
-    </ItemGroup>
-
-
 </Project>
