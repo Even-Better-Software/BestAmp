@@ -21,7 +21,6 @@ string[] CLIENT_ORIGINS = [
 
 // address for non-TCP communication w/ the bridge
 const string BRIDGE_ADDRESS = "http://127.0.0.1:7081";
-const string BRIDGE_HTTP_ADDRESS = "http://127.0.0.1:7082";
 
 // address for TCP communication w/ the bridge
 IPAddress TCP_IP = IPAddress.Loopback;
