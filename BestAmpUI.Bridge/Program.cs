@@ -1,8 +1,11 @@
 using System.Net;
+using System.Diagnostics;
 using System.Net.Mime;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text.Json;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.StaticFiles;
 
 //**-------------------------------------------------------**//
 
@@ -12,6 +15,8 @@ string[] CLIENT_ORIGINS = [
     "http://127.0.0.1:7082",
     "https://localhost:7083",
     "https://127.0.0.1:7083",
+    "http://localhost:7081",
+    "https://localhost:7081"
 ];
 
 // address for non-TCP communication w/ the bridge
@@ -46,12 +51,66 @@ const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
 
 //**-------------------------------------------------------**//
 
+/*  BestAmp audio engine initialization
+*/
+
+
+// Resolve the audio engine binary path
+// Spawn the audio engine
+// [WO] TODO, override the executable path for development purposes w/ an env var
+string EXPECTED_BA_DIR = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "BestAmp");
+string EXPECTED_BA_BIN = Path.Combine(
+    EXPECTED_BA_DIR, "audio-engine", "BestAmp.exe");
+
+Console.Out.WriteLine($"{EXPECTED_BA_DIR}");
+Console.Out.WriteLine($"{EXPECTED_BA_BIN}");
+if (!Path.Exists(EXPECTED_BA_BIN))
+{
+    Console.Error.WriteLine("Missing BestAmp binary check you installation.");
+    Environment.Exit(1);
+}
+Process audioEngine = new Process();
+audioEngine.StartInfo.UseShellExecute = true;
+audioEngine.StartInfo.FileName = EXPECTED_BA_BIN;
+audioEngine.StartInfo.CreateNoWindow = false;
+audioEngine.Start();
+Console.WriteLine("audio engine spawned successfully");
+
+
+// Spawn a browser process
+Process renderer = new Process();
+audioEngine.StartInfo.UseShellExecute = true;
+audioEngine.StartInfo.FileName = "http://localhost:7081";
+audioEngine.StartInfo.CreateNoWindow = false;
+audioEngine.Start();
+Console.WriteLine("renderer spawned successfully");
+
+
+// Webserver options
+// Ammend this to server the compiled audio engine front-end from the distributed path
+// [WO] override the wwwroot path from an environment variable for development purposes
+FileExtensionContentTypeProvider provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".dat"] = "application/octet-stream";
+provider.Mappings[".blat"] = "application/octet-stream";
+provider.Mappings[".wasm"] = "application/wasm";
+provider.Mappings[".dll"] = "application/octet-stream";
+
+string EXPECTED_BA_WWWROOT = Path.Combine(EXPECTED_BA_DIR, "wwwroot");
+if (!Directory.Exists(EXPECTED_BA_WWWROOT))
+{
+    Console.Error.WriteLine("Missing BestAmp front end UI files check your installation.");
+    CleanUpProcesess(audioEngine);
+    Environment.Exit(1);
+}
+
 WebSocketOptions sockOptions = new()
 {
     KeepAliveInterval = TimeSpan.FromSeconds(KEEP_ALIVE_INTERVAL),
 };
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseUrls([ BRIDGE_ADDRESS ]);
 builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => policy
     .WithOrigins(CLIENT_ORIGINS)
     .AllowAnyHeader()
@@ -59,12 +118,26 @@ builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => pol
 ));
 
 WebApplication app = builder.Build();
+
 app.UseCors(CORS_POLICY);
 app.UseWebSockets(sockOptions);
-app.UseDefaultFiles();
-app.UseStaticFiles();
 
-app.MapFallbackToFile("index.html");
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
+    ContentTypeProvider = provider,
+    ServeUnknownFileTypes = true
+    // Ensures correct content-types for .wasm, .dll, etc.
+});
+
+// Fallback routing for Blazor Single Page Application (SPA) routing.
+// This redirects all unmatched requests to index.html so client-side routing works.
+app.MapFallbackToFile("index.html", new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
+    ServeUnknownFileTypes = true
+});
+
 
 // setup tcp/ws connection
 app.Map(ENDPOINT_BACKEND, async context =>
@@ -93,11 +166,10 @@ app.Map(ENDPOINT_BACKEND, async context =>
     {
         // this happens on a disconnect
         Console.Out.WriteLine("Connection closed cleanly.");
-        browserToTcp.Dispose();
-        tcpToBrowser.Dispose();
     }
     finally
     {
+        Console.WriteLine("finally");
         cancelTokenSrc.Cancel();
         try
         {
@@ -108,6 +180,11 @@ app.Map(ENDPOINT_BACKEND, async context =>
             Console.Error.WriteLine(ERR_CLOSE_FAILED);
             Console.Error.WriteLine(err);
         }
+        browserToTcp.Dispose();
+        tcpToBrowser.Dispose();
+
+        CleanUpProcesess(audioEngine, renderer);
+        Environment.Exit(0);
     }
 });
 
@@ -149,7 +226,14 @@ app.MapPut(ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cance
 
 app.Run(BRIDGE_ADDRESS);
 
+
 //**-------------------------------------------------------**//
+
+static void CleanUpProcesess(Process? audioEngine = null, Process? renderer = null)
+{
+    audioEngine?.Kill(); 
+    // renderer?.Kill();
+}
 
 /**
  * Returns the absolute file path of where the preferences file is stored.
@@ -213,3 +297,9 @@ static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream
         await tcpStream.WriteAsync(buffer.AsMemory(0, result.Count), cancelToken);
     }
 }
+
+
+/* cleanup application resources */
+
+CleanUpProcesess(audioEngine, renderer);
+
