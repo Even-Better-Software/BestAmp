@@ -13,6 +13,10 @@ MAIN        = $(SRC_DIR)/main.c
 
 RES_DIR     = res
 
+TEST_DIR    = test
+TEST_TARGET = $(BUILD_DIR)/BestAmpTests.exe
+TEST_MAIN   = $(TEST_DIR)/test.c
+
 BA_COMMON   = $(SRC_DIR)/ba_common.c
 BA_COMMON_O = $(BUILD_DIR)/ba_common.o
 BA_DSP      = $(SRC_DIR)/ba_dsp.c
@@ -42,12 +46,14 @@ DLL_DEST    = $(BUILD_DIR)/libportaudio.dll
 
 all: $(TARGET) $(DLL_DEST)
 
+test: $(TEST_TARGET) $(DLL_DEST)
+> ./$(TEST_TARGET)
+
 debug: CFLAGS += -g
 debug: CFLAGS += -DBA_DEBUG
 debug: $(TARGET) $(DLL_DEST)
 
 stats: $(STATS_TARGET) $(DLL_DEST)
-
 
 $(BUILD_DIR):
 > mkdir -p $(BUILD_DIR)
@@ -93,6 +99,17 @@ $(TARGET): $(MAIN) \
     $(BA_WIN_RES_O) | $(BUILD_DIR)
 > $(CC) $(MAIN) $(BUILD_DIR)/*.o -o $@ $(CFLAGS) $(LDFLAGS)
 
+$(TEST_TARGET): $(TEST_MAIN) \
+    $(BA_COMMON_O) \
+    $(BA_DSP_O) \
+    $(BA_AMP_O) \
+    $(BA_PREFS_O) \
+    $(BA_PORTAUDIO_HELPERS_O) \
+    $(BA_PORTAUDIO_CB_O) \
+    $(BA_TCP_O) \
+    $(BA_TCP_MESSAGES_O) \
+    $(BA_WIN_RES_O) | $(BUILD_DIR)
+> $(CC) $(TEST_MAIN) $(BUILD_DIR)/*.o -o $@ $(CFLAGS) $(LDFLAGS)
 
 $(STATS_TARGET): $(STATS) \
     $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
