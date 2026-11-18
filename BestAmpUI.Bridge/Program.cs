@@ -6,8 +6,12 @@ using System.Net.WebSockets;
 using System.Text.Json;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Web.WebView2.WinForms;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
 
-//**-------------------------------------------------------**//
 
 // any possible addresses where the client is reachable
 string[] CLIENT_ORIGINS = [
@@ -49,11 +53,8 @@ const string ERR_NOT_JSON = "Received non-JSON object.";
 const string ERR_CLOSE_FAILED = "Tried to close connection twice?";
 const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
 
-//**-------------------------------------------------------**//
 
-/*  BestAmp audio engine initialization
-*/
-
+#region APP-AENG
 
 // Resolve the audio engine binary path
 // Spawn the audio engine
@@ -78,14 +79,10 @@ audioEngine.Start();
 Console.WriteLine("audio engine spawned successfully");
 
 
-// Spawn a browser process
-Process renderer = new Process();
-audioEngine.StartInfo.UseShellExecute = true;
-audioEngine.StartInfo.FileName = "http://localhost:7081";
-audioEngine.StartInfo.CreateNoWindow = false;
-audioEngine.Start();
-Console.WriteLine("renderer spawned successfully");
+#endregion
 
+
+#region APP-WEBSRV
 
 // Webserver options
 // Ammend this to server the compiled audio engine front-end from the distributed path
@@ -110,7 +107,7 @@ WebSocketOptions sockOptions = new()
 };
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls([ BRIDGE_ADDRESS ]);
+builder.WebHost.UseUrls(BRIDGE_ADDRESS);
 builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => policy
     .WithOrigins(CLIENT_ORIGINS)
     .AllowAnyHeader()
@@ -118,20 +115,14 @@ builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => pol
 ));
 
 WebApplication app = builder.Build();
-
 app.UseCors(CORS_POLICY);
 app.UseWebSockets(sockOptions);
-
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
     ContentTypeProvider = provider,
     ServeUnknownFileTypes = true
-    // Ensures correct content-types for .wasm, .dll, etc.
 });
-
-// Fallback routing for Blazor Single Page Application (SPA) routing.
-// This redirects all unmatched requests to index.html so client-side routing works.
 app.MapFallbackToFile("index.html", new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
@@ -183,7 +174,7 @@ app.Map(ENDPOINT_BACKEND, async context =>
         browserToTcp.Dispose();
         tcpToBrowser.Dispose();
 
-        CleanUpProcesess(audioEngine, renderer);
+        CleanUpProcesess(audioEngine);
         Environment.Exit(0);
     }
 });
@@ -224,10 +215,48 @@ app.MapPut(ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cance
     return Results.NoContent();
 });
 
-app.Run(BRIDGE_ADDRESS);
+#endregion
 
 
-//**-------------------------------------------------------**//
+#region APP-RT
+
+Thread uiThread = new Thread(() =>
+{
+    Form form = new Form
+    {
+        Text = "BestAmp",
+        Width = 1200,
+        Height = 800
+    };
+
+    WebView2 webView = new WebView2
+    {
+        Dock = DockStyle.Fill
+    };
+
+    form.Controls.Add(webView);
+
+    form.Load += async (sender, e) =>
+    {
+        try
+        {
+            await webView.EnsureCoreWebView2Async(null);
+            webView.CoreWebView2.Navigate("http://localhost:7081");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"WebView2 initialization failed: {ex.Message}");
+        }
+    };
+
+    Application.Run(form);
+});
+
+
+#endregion
+
+
+#region APP-UTILS
 
 static void CleanUpProcesess(Process? audioEngine = null, Process? renderer = null)
 {
@@ -298,8 +327,16 @@ static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream
     }
 }
 
+#endregion
 
-/* cleanup application resources */
 
-CleanUpProcesess(audioEngine, renderer);
+await app.StartAsync();
+
+uiThread.SetApartmentState(ApartmentState.STA); 
+uiThread.Start();
+uiThread.Join();
+
+await app.StopAsync();
+
+CleanUpProcesess(audioEngine);
 
