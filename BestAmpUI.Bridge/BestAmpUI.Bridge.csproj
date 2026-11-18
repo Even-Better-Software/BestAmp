@@ -8,7 +8,7 @@
     <UseWindowsForms>true</UseWindowsForms>
 
     <!--Not using WPF dll which causes this version mismatch warning-->
-    <NoWarn>$(MSB3277)</NoWarn>
+    <NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
