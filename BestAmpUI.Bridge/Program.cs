@@ -238,11 +238,13 @@ Thread uiThread = new Thread(() =>
         Text = "BestAmp",
         Width = 1200,
         Height = 800,
+        BackColor = Color.Black
     };
 
     WebView2 webView = new WebView2
     {
-        Dock = DockStyle.Fill,
+        BackColor = Color.Black,
+        Dock = DockStyle.Fill
     };
 
     form.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
