@@ -11,6 +11,6 @@ Then do the following:
 
 
 ## Running (Development)
-1. `./BestAmp.exe` (in the directory where BestAmp.exe is installed)
-2. `dotnet run --project BestAmpUI.Bridge`
-3. `dotnet run --project BestAmpUI.Client`
+1. `BestAmp.exe` (in the directory where BestAmp.exe is installed)
+2. `dotnet build`
+3. `dotnet run --project BestAmpUI.Bridge`
