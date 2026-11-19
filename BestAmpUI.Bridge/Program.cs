@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Net.Mime;
 using System.Net.Sockets;
 using System.Net.WebSockets;
+using System.Runtime.InteropServices;
+using System.Drawing;
 using System.Text.Json;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.StaticFiles;
@@ -11,6 +13,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Web.WebView2.Core;
 
 
 // any possible addresses where the client is reachable
@@ -52,6 +55,10 @@ const string ERR_NOT_WS = "Not a web socket request.";
 const string ERR_NOT_JSON = "Received non-JSON object.";
 const string ERR_CLOSE_FAILED = "Tried to close connection twice?";
 const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
+
+
+
+// create application data directory if it does not exist
 
 
 #region APP-AENG
@@ -222,26 +229,43 @@ app.MapPut(ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cance
 
 Thread uiThread = new Thread(() =>
 {
+    const int DWMWA_CAPTION_COLOR = 35;
+    const int DWMWA_TEXT_COLOR = 36;
+
     Form form = new Form
     {
         Text = "BestAmp",
         Width = 1200,
-        Height = 800
+        Height = 800,
     };
 
     WebView2 webView = new WebView2
     {
-        Dock = DockStyle.Fill
+        Dock = DockStyle.Fill,
     };
 
     form.Controls.Add(webView);
 
     form.Load += async (sender, e) =>
     {
+        Color c = Color.Black;
+        int colorRef = c.R | (c.G << 8) | (c.B << 16);
+        DwmSetWindowAttribute(form.Handle, DWMWA_CAPTION_COLOR, ref colorRef, sizeof(int));
+
         try
         {
-            await webView.EnsureCoreWebView2Async(null);
+            string ddir = GetDataDir();
+            Directory.CreateDirectory(ddir);
+            CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(userDataFolder: ddir);
+            await webView.EnsureCoreWebView2Async(env);
             webView.CoreWebView2.Navigate("http://localhost:7081");
+            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
+                window.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey && e.key === 'r') {
+                        e.preventDefault();
+                    }
+                }, false);
+            ");
         }
         catch (Exception ex)
         {
@@ -258,6 +282,9 @@ Thread uiThread = new Thread(() =>
 
 #region APP-UTILS
 
+[DllImport("dwmapi.dll", PreserveSig = true)]
+static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
 static void CleanUpProcesess(Process? audioEngine = null, Process? renderer = null)
 {
     audioEngine?.Kill(); 
@@ -272,6 +299,8 @@ static string GetPrefsFilePath() => Path.Combine(
     DATA_DIR,
     PREFS_FILE
 );
+
+static string GetDataDir() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), DATA_DIR).ToString();
 
 /**
  * Listens for TCP traffic. Forwards it to the WebSocket connection.
