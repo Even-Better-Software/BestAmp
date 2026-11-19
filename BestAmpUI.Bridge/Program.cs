@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Web.WebView2.Core;
+using System.Reflection;
 
 
 // any possible addresses where the client is reachable
@@ -244,6 +245,7 @@ Thread uiThread = new Thread(() =>
         Dock = DockStyle.Fill,
     };
 
+    form.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
     form.Controls.Add(webView);
 
     form.Load += async (sender, e) =>
@@ -259,13 +261,6 @@ Thread uiThread = new Thread(() =>
             CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(userDataFolder: ddir);
             await webView.EnsureCoreWebView2Async(env);
             webView.CoreWebView2.Navigate("http://localhost:7081");
-            await webView.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(@"
-                window.addEventListener('keydown', function(e) {
-                    if (e.ctrlKey && e.key === 'r') {
-                        e.preventDefault();
-                    }
-                }, false);
-            ");
         }
         catch (Exception ex)
         {
