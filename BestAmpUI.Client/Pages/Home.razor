@@ -7,16 +7,32 @@
 @using BestAmpUI.Client.Models
 
 <main>
-<header>
-    <h1>BestAmp Control Interface</h1>
-
+<div id="header">
     <div class="control-row">
+        <div class="control-item">
+            <div>
+                <input id="profileName" type="text" maxlength="32" size="16" @bind="ProfileNameInput"/>
+                <button @onclick="OnSaveProfile">Save</button>
+            </div>
+            <span class="control-label">Profile</span>
+            <select id="currentProfile" 
+                disabled="@(!Initialized)" @bind="CurrentProfile" @bind:after="OnProfileChanged"
+            >
+                @foreach (var profile in Profiles)
+                {
+                    <option value=@profile.Key>@profile.Key</option>
+                }
+            </select>
+        </div>
+
+        <div class="control-spacer"></div>
+
         @foreach (DialKnob dial in DialKnobs)
         {
             <div class="control-item">
-                <span class="control-label">@dial.Label</span>
                 <span class="control-input">
                     <img src="@DIAL_ICON" alt="Dial" />
+                    <span class="control-label">@dial.Label</span>
                     @if (dial.Label == "Voice")
                     {
                         <select id="@dial.Label" 
@@ -38,9 +54,9 @@
         }
 
         <div class="control-item">
-            <span class="control-label">Settings</span>
             <span class="control-input">
                 <img src="@SETTINGS_ICON" alt="Settings" />
+                <span class="control-label">Settings</span>
                 @{ string buttonLabel = SettingsOpen ? "Save" : "Open"; }
                 <input type="button" 
                     disabled="@(!Initialized)" @onclick="ToggleSettings" value=@buttonLabel
@@ -49,6 +65,13 @@
         </div>
     </div>
 
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <p role="alert">@ErrorMessage</p>
+    }
+</div>
+
+<div id="body">
     @if (SettingsOpen)
     {
         <section class="settings-panel">
@@ -113,28 +136,14 @@
                 </select>
             </div>
         </section>
+    } else {
+        <div class="bestamp-logo">
+            <div class="bestamp-logo-parent">
+                <h1>BestAmp</h1>
+            </div>
+        </div>
     }
-    @if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <p role="alert">@ErrorMessage</p>
-    }
-</header>
-
-<body class="profile-select">
-    <h2>Profile</h2>
-    <div>
-        <select id="currentProfile" 
-            disabled="@(!Initialized)" @bind="CurrentProfile" @bind:after="OnProfileChanged"
-        >
-            @foreach (var profile in Profiles)
-            {
-                <option value=@profile.Key>@profile.Key</option>
-            }
-        </select>
-        <input id="profileName" type="text" maxlength="32" size="16" @bind="ProfileNameInput"/>
-        <button @onclick="OnSaveProfile">Save</button>
-    </div>
-</body>
+</div>
 
 </main>
 
