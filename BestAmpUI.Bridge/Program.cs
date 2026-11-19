@@ -12,15 +12,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 
-
 // any possible addresses where the client is reachable
 string[] CLIENT_ORIGINS = [
+    "http://localhost:7081",
+    "http://127.0.0.1:7081",
+    "https://localhost:7081",
+    "https://127.0.0.1:7081",
     "http://localhost:7082",
     "http://127.0.0.1:7082",
     "https://localhost:7083",
     "https://127.0.0.1:7083",
-    "http://localhost:7081",
-    "https://localhost:7081"
 ];
 
 // address for non-TCP communication w/ the bridge
@@ -46,12 +47,21 @@ const string ENDPOINT_PREFS = "/prefs";
 // file system locations
 const string DATA_DIR = "BestAmp";
 const string PREFS_FILE = "ba_prefs.json";
+const string AUDIO_ENGINE_DIR = "audio-engine";
+const string AUDIO_ENGINE_FILE = "BestAmp.exe";
 
 // errors
 const string ERR_NOT_WS = "Not a web socket request.";
 const string ERR_NOT_JSON = "Received non-JSON object.";
 const string ERR_CLOSE_FAILED = "Tried to close connection twice?";
 const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
+const string ERR_MISSING_EXE = "Missing BestAmp binary. Check your installation.";
+const string ERR_MISSING_WWWROOT = "Missing BestAmp front end UI files. Check your installation.";
+
+// UI Customization
+const string WINDOW_NAME = "BestAmp";
+const int WINDOW_WIDTH = 1200;
+const int WINDOW_HEIGHT = 800;
 
 
 #region APP-AENG
@@ -60,18 +70,22 @@ const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
 // Spawn the audio engine
 // [WO] TODO, override the executable path for development purposes w/ an env var
 string EXPECTED_BA_DIR = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "BestAmp");
+    Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "BestAmp"
+);
 string EXPECTED_BA_BIN = Path.Combine(
-    EXPECTED_BA_DIR, "audio-engine", "BestAmp.exe");
+    EXPECTED_BA_DIR, AUDIO_ENGINE_DIR, AUDIO_ENGINE_FILE
+);
 
-Console.Out.WriteLine($"{EXPECTED_BA_DIR}");
-Console.Out.WriteLine($"{EXPECTED_BA_BIN}");
+Console.Out.WriteLine(EXPECTED_BA_DIR);
+Console.Out.WriteLine(EXPECTED_BA_BIN);
+
 if (!Path.Exists(EXPECTED_BA_BIN))
 {
-    Console.Error.WriteLine("Missing BestAmp binary check you installation.");
+    Console.Error.WriteLine(ERR_MISSING_EXE);
     Environment.Exit(1);
 }
-Process audioEngine = new Process();
+
+Process audioEngine = new();
 audioEngine.StartInfo.UseShellExecute = true;
 audioEngine.StartInfo.FileName = EXPECTED_BA_BIN;
 audioEngine.StartInfo.CreateNoWindow = false;
@@ -87,16 +101,12 @@ Console.WriteLine("audio engine spawned successfully");
 // Webserver options
 // Ammend this to server the compiled audio engine front-end from the distributed path
 // [WO] override the wwwroot path from an environment variable for development purposes
-FileExtensionContentTypeProvider provider = new FileExtensionContentTypeProvider();
-provider.Mappings[".dat"] = "application/octet-stream";
-provider.Mappings[".blat"] = "application/octet-stream";
-provider.Mappings[".wasm"] = "application/wasm";
-provider.Mappings[".dll"] = "application/octet-stream";
+FileExtensionContentTypeProvider provider = MakeContentProvider();
 
 string EXPECTED_BA_WWWROOT = Path.Combine(EXPECTED_BA_DIR, "wwwroot");
 if (!Directory.Exists(EXPECTED_BA_WWWROOT))
 {
-    Console.Error.WriteLine("Missing BestAmp front end UI files check your installation.");
+    Console.Error.WriteLine(ERR_MISSING_WWWROOT);
     CleanUpProcesess(audioEngine);
     Environment.Exit(1);
 }
@@ -160,7 +170,6 @@ app.Map(ENDPOINT_BACKEND, async context =>
     }
     finally
     {
-        Console.WriteLine("finally");
         cancelTokenSrc.Cancel();
         try
         {
@@ -220,16 +229,16 @@ app.MapPut(ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cance
 
 #region APP-RT
 
-Thread uiThread = new Thread(() =>
+Thread uiThread = new(() =>
 {
-    Form form = new Form
+    Form form = new()
     {
-        Text = "BestAmp",
-        Width = 1200,
-        Height = 800
+        Text = WINDOW_NAME,
+        Width = WINDOW_WIDTH,
+        Height = WINDOW_HEIGHT,
     };
 
-    WebView2 webView = new WebView2
+    WebView2 webView = new()
     {
         Dock = DockStyle.Fill
     };
@@ -241,7 +250,7 @@ Thread uiThread = new Thread(() =>
         try
         {
             await webView.EnsureCoreWebView2Async(null);
-            webView.CoreWebView2.Navigate("http://localhost:7081");
+            webView.CoreWebView2.Navigate(BRIDGE_ADDRESS);
         }
         catch (Exception ex)
         {
@@ -325,6 +334,21 @@ static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream
 
         await tcpStream.WriteAsync(buffer.AsMemory(0, result.Count), cancelToken);
     }
+}
+
+/**
+ * Explicitly define mappings for important content types
+ */
+static FileExtensionContentTypeProvider MakeContentProvider()
+{
+    FileExtensionContentTypeProvider provider = new();
+    
+    provider.Mappings[".dat"] = "application/octet-stream";
+    provider.Mappings[".blat"] = "application/octet-stream";
+    provider.Mappings[".wasm"] = "application/wasm";
+    provider.Mappings[".dll"] = "application/octet-stream";
+
+    return provider;
 }
 
 #endregion
