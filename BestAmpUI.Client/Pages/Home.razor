@@ -185,11 +185,11 @@
     private UserPrefs? UserPrefs { get; set; }
     private Dictionary<int, string> Voices { get; set; } = [];
     private Dictionary<int, HostApiInfo> HostApis { get; set; } = [];
-    private Dictionary<int, DeviceInfo> Devices { get; set; }= [];
+    private Dictionary<int, DeviceInfo> Devices { get; set; } = [];
     private string CurrentProfile { get; set; } = UserPrefs.DEFAULT;
     private Dictionary<string, UpdateAmpValuesRequest> Profiles { get; set; } = new ()
     {
-        { UserPrefs.DEFAULT, new UpdateAmpValuesRequest() }       
+        { UserPrefs.DEFAULT, new UpdateAmpValuesRequest() }
     };
     private string ProfileNameInput { get; set; } = UserPrefs.DEFAULT;
 
@@ -320,6 +320,12 @@
                     break;
                 }
 
+                if (Devices.Count == 0)
+                {
+                    Devices[apiInfo.DefaultInDevice] = new DeviceInfo() { Name = "N/A" };
+                    Devices[apiInfo.DefaultOutDevice] = new DeviceInfo() { Name = "N/A" };
+                }
+
                 Settings.DeviceIn = apiInfo.DefaultInDevice;
                 Settings.DeviceOut = apiInfo.DefaultOutDevice;
                 Settings.ChannelIn = MaxChannelIn();
@@ -387,15 +393,25 @@
     private async Task OnProfileChanged()
     {
         ProfileNameInput = CurrentProfile;
+
+
         Dials = Profiles[CurrentProfile];
         LoadDials();
-        await SavePreferences();
+        Dials = new ();
+        CaptureDials();
+
+        await SavePreferences(saveProfiles: true);
     }
 
-    private void OnSaveProfile()
+    private async Task OnSaveProfile()
     {
+        Dials = new();
+        CaptureDials();
+
         Profiles[ProfileNameInput] = Dials;
         CurrentProfile = ProfileNameInput;
+
+        await OnProfileChanged();
     }
 
     private async Task ToggleSettings()
@@ -405,7 +421,7 @@
             await SendSettings();
             SettingsOpen = false;
             return;
-        } 
+        }
 
         SettingsOpen = true;
     }
@@ -486,28 +502,36 @@
             return;
         }
 
+        Profiles = UserPrefs!.Profiles;
+
         try
         {
-            Dials = UserPrefs!.Profiles[UserPrefs.CurrentProfile];
+            Dials = Profiles[UserPrefs.CurrentProfile];
         }
         catch (KeyNotFoundException)
         {
-            Dials = UserPrefs!.Profiles[UserPrefs.DEFAULT];
+            Dials = Profiles[UserPrefs.DEFAULT];
         }
-        
+
         LoadDials();
+        Dials = new(); // avoid keeping the references from UserPrefs
+        CaptureDials();
     }
 
-    private async Task SavePreferences()
+    private async Task SavePreferences() => await SavePreferences(false);
+    private async Task SavePreferences(bool saveProfiles)
     {
         try
         {
             UserPrefs preferences = new()
             {
                 Settings = Settings,
-                Profiles = Profiles,
                 CurrentProfile = CurrentProfile,
+                Profiles = saveProfiles ? Profiles : UserPrefs?.Profiles ?? new(), 
             };
+
+            UserPrefs = preferences;
+
             using HttpResponseMessage response = await HTTP.PutAsJsonAsync(PREFS_ENDPOINT, preferences);
             response.EnsureSuccessStatusCode(); // may throw HttpRequestException
             ErrorMessage = null;
