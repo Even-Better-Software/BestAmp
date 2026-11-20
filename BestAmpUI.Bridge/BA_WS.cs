@@ -12,10 +12,10 @@ using System.Text.Json;
 using BestAmpUI.Bridge.BA_Conf;
 using BestAmpUI.Bridge.BA_AEProc;
 
-namespace BestAmpUI.Bridge.BA_MTrnsl;
+namespace BestAmpUI.Bridge.BA_WS;
 
 
-public static class BA_Mtrnsl
+public static class BA_WS
 {
     private static readonly string ERR_NOT_WS = "Not a web socket request.";
     private static readonly string ERR_NOT_JSON = "Received non-JSON object.";
@@ -27,7 +27,7 @@ public static class BA_Mtrnsl
     public static WebApplication BA_WS;
 
 
-    static BA_Mtrnsl()
+    static BA_WS()
     {
         WebSocketOptions sockOptions = new()
         {
