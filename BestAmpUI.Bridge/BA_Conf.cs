@@ -70,7 +70,10 @@ public static class BA_Conf
     {
         string r = "";
 #if DEBUG
-        r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebdirenv) ?? "");
+        r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebdirenv) ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "BestAmp"
+        ));
 #else
         r = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
@@ -85,7 +88,10 @@ public static class BA_Conf
     {
         string r = "";
 #if DEBUG
-        r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebudirenv) ?? "");
+        r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebudirenv) ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "BestAmp"
+        ));
 #else
         r = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
