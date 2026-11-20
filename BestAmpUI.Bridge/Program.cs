@@ -4,9 +4,7 @@ using System.Net.Mime;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
-using System.Drawing;
 using System.Text.Json;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.AspNetCore.Builder;
@@ -14,18 +12,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Web.WebView2.Core;
-using System.Reflection;
 
 // any possible addresses where the client is reachable
 string[] CLIENT_ORIGINS = [
-    // "http://localhost:7081",
-    // "http://127.0.0.1:7081",
-    // "https://localhost:7081",
-    // "https://127.0.0.1:7081",
-    // "http://localhost:7082",
-    // "http://127.0.0.1:7082",
-    // "https://localhost:7083",
-    // "https://127.0.0.1:7083",
     "http://bestamp.test",
     "https://bestamp.test"
 ];
@@ -131,19 +120,6 @@ builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => pol
 WebApplication app = builder.Build();
 app.UseCors(CORS_POLICY);
 app.UseWebSockets(sockOptions);
-/*
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
-    ContentTypeProvider = provider,
-    ServeUnknownFileTypes = true
-});
-app.MapFallbackToFile("index.html", new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
-    ServeUnknownFileTypes = true
-});
-*/
 
 // setup tcp/ws connection
 app.Map(ENDPOINT_BACKEND, async context =>
@@ -237,7 +213,7 @@ app.MapPut(ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cance
 Thread uiThread = new(() =>
 {
     const int DWMWA_CAPTION_COLOR = 35;
-    const int DWMWA_TEXT_COLOR = 36;
+    // const int DWMWA_TEXT_COLOR = 36;
 
     Form form = new()
     {
