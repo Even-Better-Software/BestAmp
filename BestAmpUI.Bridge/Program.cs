@@ -18,14 +18,16 @@ using System.Reflection;
 
 // any possible addresses where the client is reachable
 string[] CLIENT_ORIGINS = [
-    "http://localhost:7081",
-    "http://127.0.0.1:7081",
-    "https://localhost:7081",
-    "https://127.0.0.1:7081",
-    "http://localhost:7082",
-    "http://127.0.0.1:7082",
-    "https://localhost:7083",
-    "https://127.0.0.1:7083",
+    // "http://localhost:7081",
+    // "http://127.0.0.1:7081",
+    // "https://localhost:7081",
+    // "https://127.0.0.1:7081",
+    // "http://localhost:7082",
+    // "http://127.0.0.1:7082",
+    // "https://localhost:7083",
+    // "https://127.0.0.1:7083",
+    "http://bestamp.test",
+    "https://bestamp.test"
 ];
 
 // address for non-TCP communication w/ the bridge
@@ -105,8 +107,6 @@ Console.WriteLine("audio engine spawned successfully");
 // Webserver options
 // Ammend this to server the compiled audio engine front-end from the distributed path
 // [WO] override the wwwroot path from an environment variable for development purposes
-FileExtensionContentTypeProvider provider = MakeContentProvider();
-
 string EXPECTED_BA_WWWROOT = Path.Combine(EXPECTED_BA_DIR, "wwwroot");
 if (!Directory.Exists(EXPECTED_BA_WWWROOT))
 {
@@ -121,7 +121,7 @@ WebSocketOptions sockOptions = new()
 };
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-builder.WebHost.UseUrls(BRIDGE_ADDRESS);
+builder.WebHost.UseUrls([ BRIDGE_ADDRESS ]);
 builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => policy
     .WithOrigins(CLIENT_ORIGINS)
     .AllowAnyHeader()
@@ -131,6 +131,7 @@ builder.Services.AddCors(options => options.AddPolicy(CORS_POLICY, policy => pol
 WebApplication app = builder.Build();
 app.UseCors(CORS_POLICY);
 app.UseWebSockets(sockOptions);
+/*
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
@@ -142,7 +143,7 @@ app.MapFallbackToFile("index.html", new StaticFileOptions
     FileProvider = new PhysicalFileProvider(EXPECTED_BA_WWWROOT),
     ServeUnknownFileTypes = true
 });
-
+*/
 
 // setup tcp/ws connection
 app.Map(ENDPOINT_BACKEND, async context =>
@@ -243,7 +244,7 @@ Thread uiThread = new(() =>
         Text = WINDOW_NAME,
         Width = WINDOW_WIDTH,
         Height = WINDOW_HEIGHT,
-        BackColor = Color.Black
+        BackColor = Color.Black,
     };
 
     WebView2 webView = new()
@@ -267,14 +268,18 @@ Thread uiThread = new(() =>
             Directory.CreateDirectory(ddir);
             CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(userDataFolder: ddir);
             await webView.EnsureCoreWebView2Async(env);
-            webView.CoreWebView2.Navigate(BRIDGE_ADDRESS);
+            webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                "bestamp.test",
+                EXPECTED_BA_WWWROOT,
+                CoreWebView2HostResourceAccessKind.Allow
+            );
+            webView.CoreWebView2.Navigate("http://bestamp.test/index.html");
         }
         catch (Exception ex)
         {
             MessageBox.Show($"WebView2 initialization failed: {ex.Message}");
         }
     };
-
     Application.Run(form);
 });
 
