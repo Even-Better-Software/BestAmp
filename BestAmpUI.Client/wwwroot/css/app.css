@@ -12,6 +12,9 @@
     --test: "test";
     --test-c: #F00;
     --gray: #222;
+
+    --bad: #F00;
+    --ok: #26b050;
 }
 
 html {
@@ -20,10 +23,10 @@ html {
     background-color: #000;
 
     box-sizing: border-box;
-    height: 100%;
+    height: 100%; width: 100%;
     padding: 2rem;
-    display: flex;
-    flex-direction: column;
+    /* display: flex;
+    flex-direction: column; */
 }
 body {
     height: 100%;
@@ -135,4 +138,5 @@ code {
 
 #app {
     height: 100%;
+    position: relative;
 }

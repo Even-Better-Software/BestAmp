@@ -3,148 +3,162 @@
 @inject IJSRuntime JS
 @inject HttpClient HTTP
 @using System.Net.Http.Json
+@using System.Security.Principal
 @using System.Text.Json
 @using BestAmpUI.Client.Models
 
-<main>
-<div id="header">
-    <div class="control-row">
-        <div class="control-item">
-            <div>
-                <input id="profileName" type="text" maxlength="32" size="16" @bind="ProfileNameInput"/>
-                <button @onclick="OnSaveProfile">Save</button>
-            </div>
-            <span class="control-label">Profile</span>
-            <select id="currentProfile" 
-                disabled="@(!Initialized)" @bind="CurrentProfile" @bind:after="OnProfileChanged"
-            >
-                @foreach (var profile in Profiles)
-                {
-                    <option value=@profile.Key>@profile.Key</option>
-                }
-            </select>
-        </div>
-
-        <div class="control-spacer"></div>
-
-        @foreach (DialKnob dial in DialKnobs)
+<div class="error-message-container">
+    @foreach (var message in messages) {
+        @if (message.GMType == GUIMessageType.Info)
         {
-            <div class="control-item">
-                <span class="control-input">
-                    <img src="@DIAL_ICON" alt="Dial" />
-                    <span class="control-label">@dial.Label</span>
-                    @if (dial.Label == "Voice")
-                    {
-                        <select id="@dial.Label" 
-                            disabled="@(!Initialized)" @bind=dial.Value @bind:after="SendDials"
-                        >
-                            @foreach (var voice in Voices)
-                            {
-                                <option value=@voice.Key>@voice.Value</option>
-                            }
-                        </select>
-                    } else
-                    {
-                        <input id="@dial.Label" type="number" step="any" min=0 max=10
-                            disabled="@(!Initialized)" @bind="dial.Value" @bind:after="SendDials" 
-                        />  
-                    }
-                </span>
+            <div class="message info-message">
+                <input class="message-destroy" type="button" value="X" @onclick="@(() => NukeMessage(message))" />
+                <span class="message-content"> @(message.Content) </span>
+            </div>
+        } else if (message.GMType == GUIMessageType.Error)
+        {
+            <div class="message error-message">
+                <input class="message-destroy" type="button" value="X" @onclick="@(() => NukeMessage(message))" />
+                <span class="message-content"> @(message.Content) </span>
+            </div>
+        } else
+        {
+            <div class="message">
+                <input class="message-destroy" type="button" value="X" @onclick="@(() => NukeMessage(message))" />
+                <span class="message-content"> @(message.Content) </span>
             </div>
         }
+    }
+</div>
+<main>
+    <div id="header">
+        <div class="control-row">
+            <div class="control-item">
+                <div>
+                    <input id="profileName" type="text" maxlength="32" size="16" @bind="ProfileNameInput" />
+                    <button @onclick="OnSaveProfile">Save</button>
+                </div>
+                <span class="control-label">Profile</span>
+                <select id="currentProfile" disabled="@(!Initialized)" @bind="CurrentProfile"
+                        @bind:after="OnProfileChanged">
+                    @foreach (var profile in Profiles)
+                    {
+                        <option value=@profile.Key>@profile.Key</option>
+                    }
+                </select>
+            </div>
 
-        <div class="control-item">
-            <span class="control-input">
-                <img src="@SETTINGS_ICON" alt="Settings" />
-                <span class="control-label">Settings</span>
-                @{ string buttonLabel = SettingsOpen ? "Save" : "Open"; }
-                <input type="button" 
-                    disabled="@(!Initialized)" @onclick="ToggleSettings" value=@buttonLabel
-                />
-            </span>
+            <div class="control-spacer"></div>
+
+            @foreach (DialKnob dial in DialKnobs)
+            {
+                <div class="control-item">
+                    <span class="control-input">
+                        <img src="@DIAL_ICON" alt="Dial" />
+                        <span class="control-label">@dial.Label</span>
+                        @if (dial.Label == "Voice")
+                        {
+                            <select id="@dial.Label" disabled="@(!Initialized)" @bind=dial.Value @bind:after="SendDials">
+                                @foreach (var voice in Voices)
+                                {
+                                    <option value=@voice.Key>@voice.Value</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <input id="@dial.Label" type="number" step="any" min=0 max=10 disabled="@(!Initialized)"
+                                   @bind="dial.Value" @bind:after="SendDials" />
+                        }
+                    </span>
+                </div>
+            }
+
+            <div class="control-item">
+                <span class="control-input">
+                    <img src="@SETTINGS_ICON" alt="Settings" />
+                    <span class="control-label">Settings</span>
+                    @{
+                        string buttonLabel = SettingsOpen ? "Save" : "Open";
+                    }
+                    <input type="button" disabled="@(!Initialized)" @onclick="@(() => ToggleSettings(true))"
+                           value=@buttonLabel />
+                </span>
+            </div>
         </div>
     </div>
 
-    @if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <p role="alert">@ErrorMessage</p>
-    }
-</div>
-
-<div id="body">
-    @if (SettingsOpen)
-    {
-        <section class="settings-panel">
-            <div class="settings-row extend-to-end">
-                <label for="hostApi">Host API</label>
-                <select id="hostApi" 
-                    disabled="@(!Initialized)" @bind="Settings.HostApi" @bind:after="OnHostApiChanged"
-                >
-                    @foreach (var hostApi in HostApis)
-                    {
-                        <option value=@hostApi.Key>@hostApi.Value.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="settings-row">
-                <label for="deviceIn">In Device</label>
-                <select id="deviceIn" 
-                    disabled="@(!Initialized)" @bind="Settings.DeviceIn" @bind:after="SavePreferences"
-                >
-                    @foreach (var device in Devices)
-                    {
-                        <option value=@device.Key>@device.Value.Name</option>
-                    }
-                </select>
-                <label for="channelIn">In Channel Number</label>
-                <input id="channelIn" type="number" min=0 max=@MaxChannelIn() 
-                    disabled="@(!Initialized)" @bind="Settings.ChannelIn" @bind:after="SavePreferences" 
-                />
-            </div>
-            <div class="settings-row">
-                <label for="deviceOut">Out device</label>
-                <select id="deviceOut" 
-                    disabled="@(!Initialized)" @bind="Settings.DeviceOut" @bind:after="SavePreferences"
-                >
-                    @foreach (var device in Devices)
-                    {
-                        <option value=@device.Key>@device.Value.Name</option>
-                    }
-                </select>
-                <label for="channelOut">Out Channel Number</label>
-                <input id="channelOut" type="number" min=0 max=@MaxChannelOut() 
-                    disabled="@(!Initialized)" @bind="Settings.ChannelOut" @bind:after="SavePreferences"
-                />
-            </div>
-            <div class="settings-row extend-to-end">
-                <label for="sampleRate">Sample Rate (in Hz)</label>
-                <input id="sampleRate" type="number" 
-                    disabled="@(!Initialized)" @bind="Settings.SampleRate" @bind:after="SavePreferences"
-                />
-            </div>
-            <div class="settings-row extend-to-end">
+    <div id="body">
+        @if (SettingsOpen)
+        {
+            <div class="settings-container">
+                <section class="settings-panel">
+                    <input class="control-button" type="button" @onclick="@(() => ToggleSettings())" value="X" />
+                    <div class="settings-row extend-to-end">
+                        <label for="hostApi">Host API</label>
+                        <select id="hostApi" disabled="@(!Initialized)" @bind="Settings.HostApi"
+                                @bind:after="OnHostApiChanged">
+                            @foreach (var hostApi in HostApis)
+                            {
+                                <option value=@hostApi.Key>@hostApi.Value.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="settings-row">
+                        <label for="deviceIn">In Device</label>
+                        <select id="deviceIn" disabled="@(!Initialized)" @bind="Settings.DeviceIn"
+                                @bind:after="SavePreferences">
+                            @foreach (var device in Devices)
+                            {
+                                <option value=@device.Key>@device.Value.Name</option>
+                            }
+                        </select>
+                        <label for="channelIn">In Channel Number</label>
+                        <input id="channelIn" type="number" min=0 max=@MaxChannelIn() disabled="@(!Initialized)"
+                               @bind="Settings.ChannelIn" @bind:after="SavePreferences" />
+                    </div>
+                    <div class="settings-row">
+                        <label for="deviceOut">Out device</label>
+                        <select id="deviceOut" disabled="@(!Initialized)" @bind="Settings.DeviceOut"
+                                @bind:after="SavePreferences">
+                            @foreach (var device in Devices)
+                            {
+                                <option value=@device.Key>@device.Value.Name</option>
+                            }
+                        </select>
+                        <label for="channelOut">Out Channel Number</label>
+                        <input id="channelOut" type="number" min=0 max=@MaxChannelOut() disabled="@(!Initialized)"
+                               @bind="Settings.ChannelOut" @bind:after="SavePreferences" />
+                    </div>
+                    <div class="settings-row extend-to-end">
+                        <label for="sampleRate">Sample Rate (in Hz)</label>
+                        <input id="sampleRate" type="number" disabled="@(!Initialized)" @bind="Settings.SampleRate"
+                               @bind:after="SavePreferences" />
+                    </div>
+                    <div class="settings-row extend-to-end">
                 
-                <label for="framesPerBuffer">Frames per buffer</label>
-                <select id="framesPerBuffer" 
-                    disabled="@(!Initialized)" @bind="Settings.FramesPerBuffer" @bind:after="SavePreferences"
-                >
-                    <option value=0>0</option>
-                    @for (int exp = 1; exp <= 9; exp++)
-                    {
-                        <option>@Math.Pow(2, exp)</option>
-                    }
-                </select>
+                        <label for="framesPerBuffer">Frames per buffer</label>
+                        <select id="framesPerBuffer" disabled="@(!Initialized)" @bind="Settings.FramesPerBuffer"
+                                @bind:after="SavePreferences">
+                            <option value=0>0</option>
+                            @for (int exp = 1; exp <= 9; exp++)
+                            {
+                                <option>@Math.Pow(2, exp)</option>
+                            }
+                        </select>
+                    </div>
+                </section>
             </div>
-        </section>
-    } else {
-        <div class="bestamp-logo">
-            <div class="bestamp-logo-parent">
-                <h1>BestAmp</h1>
+        }
+        else
+        {
+            <div class="bestamp-logo">
+                <div class="bestamp-logo-parent">
+                    <h1>BestAmp</h1>
+                </div>
             </div>
-        </div>
-    }
-</div>
-
+        }
+    </div>
 </main>
 
 @code {
@@ -187,6 +201,7 @@
         { OkResponse.OPCODE, (msg) => new OkResponse(msg) },
         { BadResponse.OPCODE, (msg) => new BadResponse(msg) },
     };
+    private List<Message> messages = new List<Message>();
 
     // Properties
     private UpdateAmpValuesRequest Dials { get; set; } = new();
@@ -196,16 +211,12 @@
     private Dictionary<int, HostApiInfo> HostApis { get; set; } = [];
     private Dictionary<int, DeviceInfo> Devices { get; set; } = [];
     private string CurrentProfile { get; set; } = UserPrefs.DEFAULT;
-    private Dictionary<string, UpdateAmpValuesRequest> Profiles { get; set; } = new ()
+    private Dictionary<string, UpdateAmpValuesRequest> Profiles { get; set; } = new()
     {
         { UserPrefs.DEFAULT, new UpdateAmpValuesRequest() }
     };
     private string ProfileNameInput { get; set; } = UserPrefs.DEFAULT;
 
-    /// <summary>
-    /// Used to display any errors
-    /// </summary>
-    private string? ErrorMessage;
 
     /// <summary>
     /// Controls if the settings section is being shown
@@ -214,13 +225,22 @@
 
     /// <summary>
     /// True if all necessary settings data is retrieved
-    /// </summary> 
-    private bool Initialized { get; set; } 
+    /// </summary>
+    private bool Initialized { get; set; }
+    private bool ShowPrefsMsg { get; set; } = false;
 
     /// <summary>
     /// True if BestAmp already provided a default host API
     /// </summary>
     private bool ReceivedDefaultHostApi { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        @* messages.Add(new Message("test"));
+        messages.Add(new Message("test again")); *@
+
+        return base.OnInitializedAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -230,7 +250,7 @@
             callback = DotNetObjectReference.Create(this);
             _ = JS.InvokeVoidAsync(JSFUNC_CONNECT, BRIDGE_ENDPOINT, callback);
 
-            StateHasChanged(); 
+            StateHasChanged();
         }
     }
 
@@ -252,7 +272,7 @@
 
     [JSInvokable]
     public async Task OnTcpMessage(byte[] message)
-    {   
+    {
         int opcode = Response.OpcodeFromMessage(message);
 
         Response response;
@@ -260,7 +280,7 @@
         {
             response = OpcodeToResponse[opcode](message);
             await HandleResponse(response, opcode);
-        } 
+        }
         catch (KeyNotFoundException)
         {
             Console.WriteLine($"Unknown opcode {opcode}");
@@ -279,7 +299,8 @@
 
                 if (availableApis.Count == 0)
                 {
-                    ErrorMessage = "BestAmp did not detect any host APIs.";
+                    // ErrorMessage = "BestAmp did not detect any host APIs.";
+                    messages.Add(new Message("BestAmp did not detect any host APIs", GUIMessageType.Error));
                     break;
                 }
 
@@ -303,7 +324,7 @@
                     ReceivedDefaultHostApi = false;
                     Initialized = false;
                     await RequestDefaultHostApi();
-                    break;    
+                    break;
                 }
 
                 if (!Initialized)
@@ -325,7 +346,8 @@
                 }
                 catch (KeyNotFoundException)
                 {
-                    ErrorMessage = "Selected Host API became unavailable mid operation.";
+                    // ErrorMessage = "Selected Host API became unavailable mid operation.";
+                    messages.Add(new Message("Selected Host API became unavailable mid operation", GUIMessageType.Error));
                     break;
                 }
 
@@ -364,10 +386,19 @@
                 break;
 
             case UpdatePrefsResponse.OPCODE:
-                Console.WriteLine(((UpdatePrefsResponse)response).success ? 
-                    "Updated settings successfully!" : 
-                    "Failed to update amp settings!"
-                );
+                if (((UpdatePrefsResponse)response).success)
+                {
+                    Console.WriteLine("Updated settings successfully!");
+                    messages.Add(new Message(
+                        "Driver and devices settings updated successfully"
+                    ));
+                } else {
+                    Console.WriteLine("Failed to update amp settings!");
+                    messages.Add(new Message(
+                        "The driver / device settings you supplied were invalid",
+                        GUIMessageType.Error
+                    ));
+                }
                 break;
 
             case OkResponse.OPCODE:
@@ -375,14 +406,20 @@
 
             case BadResponse.OPCODE:
                 Console.WriteLine("Server replied with generic error.");
+                messages.Add(new Message(
+                    "There was an error processing your request",
+                    GUIMessageType.Error
+                ));
                 break;
 
             case UpdateAmpValuesResponse.OPCODE:
                 Console.WriteLine("Updated amp values successfully!");
+                // messages.Add(new Message("Amp values updated successfully"));
                 break;
 
             default:
                 Console.WriteLine($"Handler for opcode {opcode} not found.");
+                // messages.Add(new Message("Invalid action"));
                 break;
         }
     }
@@ -406,7 +443,7 @@
 
         Dials = Profiles[CurrentProfile];
         LoadDials();
-        Dials = new ();
+        Dials = new();
         CaptureDials();
 
         await SavePreferences(saveProfiles: true);
@@ -414,6 +451,7 @@
 
     private async Task OnSaveProfile()
     {
+        ShowPrefsMsg = true;
         Dials = new();
         CaptureDials();
 
@@ -423,11 +461,12 @@
         await OnProfileChanged();
     }
 
-    private async Task ToggleSettings()
+    private async Task ToggleSettings(bool save = false)
     {
         if (SettingsOpen)
         {
-            await SendSettings();
+            if (save)
+                await SendSettings();
             SettingsOpen = false;
             return;
         }
@@ -435,15 +474,24 @@
         SettingsOpen = true;
     }
 
-    private int MaxChannelIn() 
+    private async Task NukeMessage(Message m)
+    {
+        if (messages.Contains(m))
+        {
+            messages.Remove(m);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private int MaxChannelIn()
     {
         try
         {
             return Devices[Settings.DeviceIn].MaxInChannel;
-        } 
+        }
         catch (KeyNotFoundException)
         {
-            return 0;   
+            return 0;
         }
     }
 
@@ -452,10 +500,10 @@
         try
         {
             return Devices[Settings.DeviceOut].MaxOutChannel;
-        } 
+        }
         catch (KeyNotFoundException)
         {
-            return 0;   
+            return 0;
         }
     }
 
@@ -506,7 +554,8 @@
         }
         catch (JsonException err)
         {
-            ErrorMessage = "Problem parsing user preferences"; 
+            // ErrorMessage = "Problem parsing user preferences";
+            messages.Add(new Message("Problem parsing user preferences", GUIMessageType.Error));
             Console.Error.WriteLine(err.Message);
             return;
         }
@@ -528,7 +577,7 @@
     }
 
     private async Task SavePreferences() => await SavePreferences(false);
-    private async Task SavePreferences(bool saveProfiles)
+    private async Task SavePreferences(bool saveProfiles = false)
     {
         try
         {
@@ -536,24 +585,33 @@
             {
                 Settings = Settings,
                 CurrentProfile = CurrentProfile,
-                Profiles = saveProfiles ? Profiles : UserPrefs?.Profiles ?? new(), 
+                Profiles = saveProfiles ? Profiles : UserPrefs?.Profiles ?? new(),
             };
 
             UserPrefs = preferences;
 
             using HttpResponseMessage response = await HTTP.PutAsJsonAsync(PREFS_ENDPOINT, preferences);
             response.EnsureSuccessStatusCode(); // may throw HttpRequestException
-            ErrorMessage = null;
+            // ErrorMessage = null;
+            if (ShowPrefsMsg)
+            {
+                messages.Add(new Message("Profile settings saved"));
+            }
         }
         catch (HttpRequestException err)
         {
-            ErrorMessage = $"Preferences could not be saved.";
-            Console.WriteLine(err.Message); 
+            //ErrorMessage = $"Preferences could not be saved.";
+            Console.WriteLine(err.Message);
+            messages.Add(new Message("Profile could not be saved", GUIMessageType.Error));
         }
         catch (JsonException err)
         {
-            ErrorMessage = $"Preferences could not be saved.";
+            //ErrorMessage = $"Preferences could not be saved.";
             Console.WriteLine(err.Message);
+            messages.Add(new Message("Profile could not be saved", GUIMessageType.Error));
+        } finally
+        {
+            ShowPrefsMsg = false;
         }
     }
 
