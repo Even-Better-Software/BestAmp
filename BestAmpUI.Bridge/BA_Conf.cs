@@ -1,5 +1,6 @@
-using System.Net;
 using System;
+using System.Net;
+using System.Reflection;
 
 namespace BestAmpUI.Bridge.BA_Conf;
 
@@ -66,24 +67,18 @@ public static class BA_Conf
         Console.WriteLine($"Audio Engine: {BA_AE_BIN}");
         Console.WriteLine($"GUI files directory: {BA_AE_GUI}");
     }
+
     private static string _res_dir()
     {
-        string r = "";
+        string assem = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        string r = assem;
 #if DEBUG
-        r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebdirenv) ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            "BestAmp"
-        ));
-#else
-        r = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            "BestAmp"
-        );
-
+        r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebdirenv) ?? assem);
 #endif
         Directory.CreateDirectory(r);
         return r;
     }
+
     private static string _res_u_dir()
     {
         string r = "";
