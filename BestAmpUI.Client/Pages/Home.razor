@@ -296,7 +296,6 @@
 
                 if (availableApis.Count == 0)
                 {
-                    // ErrorMessage = "BestAmp did not detect any host APIs.";
                     messages.Add(new Message("BestAmp did not detect any host APIs", GUIMessageType.Error));
                     break;
                 }
@@ -343,7 +342,6 @@
                 }
                 catch (KeyNotFoundException)
                 {
-                    // ErrorMessage = "Selected Host API became unavailable mid operation.";
                     messages.Add(new Message("Selected Host API became unavailable mid operation", GUIMessageType.Error));
                     break;
                 }
@@ -551,7 +549,6 @@
         }
         catch (JsonException err)
         {
-            // ErrorMessage = "Problem parsing user preferences";
             messages.Add(new Message("Problem parsing user preferences", GUIMessageType.Error));
             Console.Error.WriteLine(err.Message);
             return;
@@ -589,7 +586,6 @@
 
             using HttpResponseMessage response = await HTTP.PutAsJsonAsync(PREFS_ENDPOINT, preferences);
             response.EnsureSuccessStatusCode(); // may throw HttpRequestException
-            // ErrorMessage = null;
             if (ShowPrefsMsg)
             {
                 messages.Add(new Message("Profile settings saved"));
@@ -597,13 +593,11 @@
         }
         catch (HttpRequestException err)
         {
-            //ErrorMessage = $"Preferences could not be saved.";
             Console.WriteLine(err.Message);
             messages.Add(new Message("Profile could not be saved", GUIMessageType.Error));
         }
         catch (JsonException err)
         {
-            //ErrorMessage = $"Preferences could not be saved.";
             Console.WriteLine(err.Message);
             messages.Add(new Message("Profile could not be saved", GUIMessageType.Error));
         } finally
