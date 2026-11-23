@@ -198,6 +198,10 @@
         { OkResponse.OPCODE, (msg) => new OkResponse(msg) },
         { BadResponse.OPCODE, (msg) => new BadResponse(msg) },
     };
+
+    // Messages that will be rendered to the user in the GUI
+    //      Information about the status of their requests
+    //      Generally feedback for the user
     private List<Message> messages = new List<Message>();
 
     // Properties
