@@ -13,7 +13,7 @@ public static class Config
 
     // file system locations
     public const string DIR_DATA = "BestAmp";
-    public const string FILE_AUDIO_ENGINE = "BestAmp.exe";
+    public const string FILE_AUDIO_ENGINE = "BestAmp.AudioEngine.exe";
     public const string FILE_PREFS = "ba_prefs.json";
 
 
