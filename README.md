@@ -1,49 +1,18 @@
-# BestAmp
+# BestAmpUI
+Provides an intuitive user interface for the BestAmp audio engine.
 
-Software amplifier by Rodrigo & Will (BCIT).
+## Running (Recommended)
+Before running, ensure that you've installed the BestAmp audio engine such that BestAmp.exe and libportaudio.dll exist in your ProgramFiles/BestAmp folder.
+Then do the following:
+1. `dotnet publish BestAmp.GUI`
+2. Copy the published wwwroot into the ProgramFiles/BestAmp folder (the one in the /publish folder)
+3. `dotnet publish BestAmp.App`
+4. Copy the published bridge folder into the ProgramFiles/BestAmp folder (everything in the /publish folder)
+5. Run `BestAmp.App.exe`
 
-## Dependencies
 
-### External
-
-[External Dir](./external)
-
-- [PortAudio 19](./external/portaudio)
-
-### System
-- Winsock 2
-
-## Interfaces
-
-[Include Dir](./include)
-
-## Implementation
-
-[Src Dir](./src)
-
-## Testing
-
-[Test Dir](./test)
-
-20261008
-
-entirely manual.
-
-`xxd` to convert .hex messages into .bin files
-
-write you message in .hex then convert it to binary via
-
-```bash
-xxd -r ./my-hex.hex > ./my-bin.bin
-```
-
-`message-sender.py` basic repl, prompts for .bin file path
-
-```bash
-python ./message-sender
-```
-
-## Additional Documentation
-
-- [BestAmp protocol specification](./docs/ba_proto_spec.md)
+## Running (Development)
+1. `BestAmp.exe` (in the directory where BestAmp.exe is installed)
+2. `dotnet build`
+3. `dotnet run --project BestAmp.App`
 

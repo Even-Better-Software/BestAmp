@@ -1,113 +1,61 @@
 .RECIPEPREFIX = >
 
-CC      = gcc
-CFLAGS  = -Wall -Wextra -Iinclude -Iexternal/portaudio/include
-
-LDFLAGS = -Lexternal/portaudio/lib -lportaudio -lws2_32
-
-BUILD_DIR   = build
-TARGET      = $(BUILD_DIR)/BestAmp.exe
-
-SRC_DIR     = src
-MAIN        = $(SRC_DIR)/main.c
-
-RES_DIR     = res
-
-BA_COMMON   = $(SRC_DIR)/ba_common.c
-BA_COMMON_O = $(BUILD_DIR)/ba_common.o
-BA_DSP      = $(SRC_DIR)/ba_dsp.c
-BA_DSP_O    = $(BUILD_DIR)/ba_dsp.o
-BA_AMP      = $(SRC_DIR)/ba_amp.c
-BA_AMP_O    = $(BUILD_DIR)/ba_amp.o
-BA_PREFS    = $(SRC_DIR)/ba_prefs.c
-BA_PREFS_O  = $(BUILD_DIR)/ba_prefs.o
-BA_PORTAUDIO_HELPERS    = $(SRC_DIR)/ba_portaudio_helpers.c
-BA_PORTAUDIO_HELPERS_O  = $(BUILD_DIR)/ba_portaudio_helpers.o
-BA_PORTAUDIO_CB     = $(SRC_DIR)/ba_portaudio_cb.c
-BA_PORTAUDIO_CB_O   = $(BUILD_DIR)/ba_portaudio_cb.o
-BA_TCP		= $(SRC_DIR)/ba_tcp.c
-BA_TCP_O    = $(BUILD_DIR)/ba_tcp.o
-BA_TCP_MESSAGES     = $(SRC_DIR)/ba_tcp_messages.c
-BA_TCP_MESSAGES_O   = $(BUILD_DIR)/ba_tcp_messages.o
-
-BA_WIN_RES      = $(RES_DIR)/BestAmp.rc
-BA_WIN_RES_O    = $(BUILD_DIR)/BestAmp_res.o
-
-STATS           = $(SRC_DIR)/stats.c
-STATS_TARGET    = $(BUILD_DIR)/stats.exe
-
-DLL_SRC     = external/portaudio/bin/libportaudio.dll
-DLL_DEST    = $(BUILD_DIR)/libportaudio.dll
+NET = dotnet
+NET_FLAGS =
+NET_FLAGS_O = $(NET_FLAGS)
+NET_VERSION = net10.0
+NET_VERSION_WIN = $(NET_VERSION)-windows
 
 
-all: $(TARGET) $(DLL_DEST)
-
-debug: CFLAGS += -g
-debug: CFLAGS += -DBA_DEBUG
-debug: $(TARGET) $(DLL_DEST)
-
-stats: $(STATS_TARGET) $(DLL_DEST)
+TARGET = $(BUILD_DIR)\BestAmp.exe
+BDIR =
 
 
-$(BUILD_DIR):
-> mkdir -p $(BUILD_DIR)
+AE = ./BestAmp.AudioEngine
+AE_ARGS =
+AE_BIN = BestAmp.AudioEngine.exe
+AE_DP = $(AE)/build/*.dll
+AE_CU = $(AE)/build/$(AE_BIN)
+
+GUI = ./BestAmp.GUI
+GUI_WWWROOT = $(GUI)/bin/Release/$(NET_VERSION)/publish/wwwroot/
+
+APP = ./BestAmp.App
 
 
-$(BA_WIN_RES_O): $(BA_WIN_RES) | $(BUILD_DIR)
-> windres $(BA_WIN_RES) -O coff -o $(BA_WIN_RES_O)
 
-$(BA_COMMON_O): $(BA_COMMON) | $(BUILD_DIR)
-> $(CC) $(BA_COMMON) -o $(BA_COMMON_O) -c $(CFLAGS)
+all: NET_FLAGS += publish
+all: BDIR = Release
+all: audio-engine gui app run
 
-$(BA_DSP_O): $(BA_DSP) | $(BUILD_DIR)
-> $(CC) $(BA_DSP) -o $(BA_DSP_O) -c $(CFLAGS)
-
-$(BA_AMP_O): $(BA_AMP) | $(BUILD_DIR)
-> $(CC) $(BA_AMP) -o $(BA_AMP_O) -c $(CFLAGS)
-
-$(BA_PREFS_O): $(BA_PREFS) | $(BUILD_DIR)
-> $(CC) $(BA_PREFS) -o $(BA_PREFS_O) -c $(CFLAGS)
-
-$(BA_PORTAUDIO_HELPERS_O): $(BA_PORTAUDIO_HELPERS) | $(BUILD)
-> $(CC) $(BA_PORTAUDIO_HELPERS) -o $(BA_PORTAUDIO_HELPERS_O) -c $(CFLAGS)
-
-$(BA_PORTAUDIO_CB_O): $(BA_PORTAUDIO_CB) | $(BUILD)
-> $(CC) $(BA_PORTAUDIO_CB) -o $(BA_PORTAUDIO_CB_O) -c $(CFLAGS)
-
-$(BA_TCP_O): $(BA_TCP) | $(BUILD_DIR)
-> $(CC) $(BA_TCP) -o $(BA_TCP_O) -c $(CFLAGS)
-
-$(BA_TCP_MESSAGES_O): $(BA_TCP_MESSAGES) | $(BUILD_DIR)
-> $(CC) $(BA_TCP_MESSAGES) -o $(BA_TCP_MESSAGES_O) -c $(CFLAGS)
+debug: NET_FLAGS += build --configuration Debug
+debug: AE_ARGS += debug
+debug: BDIR = Debug
+debug: audio-engine gui app run-debug
 
 
-$(TARGET): $(MAIN) \
-    $(BA_COMMON_O) \
-    $(BA_DSP_O) \
-    $(BA_AMP_O) \
-    $(BA_PREFS_O) \
-    $(BA_PORTAUDIO_HELPERS_O) \
-    $(BA_PORTAUDIO_CB_O) \
-    $(BA_TCP_O) \
-    $(BA_TCP_MESSAGES_O) \
-    $(BA_WIN_RES_O) | $(BUILD_DIR)
-> $(CC) $(MAIN) $(BUILD_DIR)/*.o -o $@ $(CFLAGS) $(LDFLAGS)
+audio-engine:
+> (cd $(AE); make $(AE_ARGS); cd ../)
+
+gui:
+> (cd $(GUI); $(NET) publish; cd ../)
+
+app: audio-engine gui
+> (cd $(APP); $(NET) $(NET_FLAGS); cd ../)
+> cp $(AE_DP) $(AE_CU) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/
+> cp $(GUI_WWWROOT) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/ --recursive
 
 
-$(STATS_TARGET): $(STATS) \
-    $(BA_PORTAUDIO_HELPERS_O) | $(BUILD_DIR)
-> $(CC) $(STATS) $(BUILD_DIR)/*.o -o $@ $(CFLAGS) $(LDFLAGS)
+run:
+> $(APP)/bin/Release/$(NET_VERSION_WIN)/BestAmp.App.exe
 
-
-$(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
-> cp $(DLL_SRC) $(DLL_DEST)
-
+run-debug:
+> $(APP)/bin/Debug/$(NET_VERSION_WIN)/BestAmp.App.exe
 
 
 clean:
->- rm ./build/*.o
->- rm ./build/BestAmp.exe
-
-clean-stats:
->- rm ./build/stats.exe
+> echo "this does nothing rn"
+# > (cd $(AE); make clean; cd ../)
+# > (echo $(GUI)/bin/*; rm $(GUI)/bin/* -rfI)
+# > (echo $(APP)/bin/*; rm $(APP)/bin/* -rfI)
 
