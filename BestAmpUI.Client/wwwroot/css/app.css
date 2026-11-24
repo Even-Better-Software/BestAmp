@@ -1,3 +1,50 @@
+@font-face {
+    font-family: IBReg;
+    src: url("/Iceberg-Regular.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: UMReg;
+    src: url("/UnifrakturMaguntia-Regular.ttf") format("truetype");
+}
+
+:root {
+    --test: "test";
+    --test-c: #F00;
+    --gray: #222;
+
+    --bad: #F00;
+    --ok: #26b050;
+}
+
+html {
+    overflow: hidden;
+    color: #FFF;
+    background-color: #000;
+
+    box-sizing: border-box;
+    height: 100%; width: 100%;
+    padding: 2rem;
+    /* display: flex;
+    flex-direction: column; */
+}
+body {
+    height: 100%;
+
+    padding: 0rem;
+    margin: 0rem;
+}
+
+
+h1 {
+    font-family: UMReg;
+}
+
+h2, h3, h4, h5, h6 {
+    font-family: IBReg;
+}
+
+
 .valid.modified:not([type=checkbox]) {
     outline: 1px solid #26b050;
 }
@@ -42,6 +89,7 @@
     }
 
 .loading-progress {
+    background-color: #000;
     position: absolute;
     display: block;
     width: 8rem;
@@ -52,14 +100,14 @@
 
     .loading-progress circle {
         fill: none;
-        stroke: #e0e0e0;
+        stroke: #000;
         stroke-width: 0.6rem;
         transform-origin: 50% 50%;
         transform: rotate(-90deg);
     }
 
         .loading-progress circle:last-child {
-            stroke: #1b6ec2;
+            stroke: #F00;
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
             transition: stroke-dasharray 0.05s ease-in-out;
         }
@@ -86,4 +134,9 @@ code {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
+}
+
+#app {
+    height: 100%;
+    position: relative;
 }
