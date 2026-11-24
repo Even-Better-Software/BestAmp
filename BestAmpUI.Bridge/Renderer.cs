@@ -1,22 +1,18 @@
-using System.Threading;
 using System.Runtime.InteropServices;
 using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 
-
 namespace BestAmpUI.Bridge;
 
-public static class BA_Renderer
+public static class Renderer
 {
     // UI Customization
-    private static readonly string WINDOW_NAME = "BestAmp";
-    private static readonly int WINDOW_WIDTH = 1200;
-    private static readonly int WINDOW_HEIGHT = 800;
+    private const string WINDOW_NAME = "BestAmp";
+    private const int WINDOW_WIDTH = 1200;
+    private const int WINDOW_HEIGHT = 800;
+    private const int DWMWA_CAPTION_COLOR = 35;
 
-
-    public static readonly Thread BA_UI_THREAD = new(() => {
-        const int DWMWA_CAPTION_COLOR = 35;
-
+    public static readonly Thread UIThread = new(() => {
         Form form = new()
         {
             Text = WINDOW_NAME,
@@ -42,18 +38,17 @@ public static class BA_Renderer
 
             try
             {
-                string wwwroot = BA_Conf.BA_AE_GUI;
-                string ddir = BA_Conf.BA_USER_DIR;
-
-                Directory.CreateDirectory(ddir);
-                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(userDataFolder: ddir);
+                Directory.CreateDirectory(Config.DataDir);
+                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(
+                    null, Config.DataDir, null
+                );
                 await webView.EnsureCoreWebView2Async(env);
                 webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
-                    "bestamp.test",
-                    wwwroot,
+                    Config.VHOST_NAME,
+                    Config.WwwrootPath,
                     CoreWebView2HostResourceAccessKind.Allow
                 );
-                webView.CoreWebView2.Navigate("http://bestamp.test/index.html");
+                webView.CoreWebView2.Navigate($"http://{Config.VHOST_NAME}/index.html");
             }
             catch (Exception ex)
             {

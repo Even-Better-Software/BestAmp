@@ -1,8 +1,6 @@
-using System.Net;
 using System.Net.Mime;
 using System.Net.Sockets;
 using System.Net.WebSockets;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
@@ -11,40 +9,38 @@ using System.Text.Json;
 
 namespace BestAmpUI.Bridge;
 
-
-public static class BA_Msgtrnsl
+public static class MessageTranslator
 {
-    private static readonly string ERR_NOT_WS = "Not a web socket request.";
-    private static readonly string ERR_NOT_JSON = "Received non-JSON object.";
-    private static readonly string ERR_CLOSE_FAILED = "Tried to close connection twice?";
-    private static readonly string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
-    private static readonly string ERR_MISSING_WWWROOT = "Missing BestAmp front end UI files. Check your installation.";
+    private const string ERR_NOT_WS = "Not a web socket request.";
+    private const string ERR_NOT_JSON = "Received non-JSON object.";
+    private const string ERR_CLOSE_FAILED = "Tried to close connection twice?";
+    private const string ERR_NOT_BINARY = "Received web socket msg not in binary format.";
 
 
-    public static WebApplication BA_WS;
+    public static readonly WebApplication WebApp;
 
 
-    static BA_Msgtrnsl()
+    static MessageTranslator()
     {
         WebSocketOptions sockOptions = new()
         {
-            KeepAliveInterval = TimeSpan.FromSeconds(BA_Conf.KEEP_ALIVE_INTERVAL),
+            KeepAliveInterval = TimeSpan.FromSeconds(Config.KEEP_ALIVE_INTERVAL),
         };
 
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls([BA_Conf.BRIDGE_ADDRESS]);
-        builder.Services.AddCors(options => options.AddPolicy(BA_Conf.CORS_POLICY, policy => policy
-            .WithOrigins(BA_Conf.CLIENT_ORIGINS)
+        builder.WebHost.UseUrls([Config.BRIDGE_ADDRESS]);
+        builder.Services.AddCors(options => options.AddPolicy(Config.CORS_POLICY, policy => policy
+            .WithOrigins(Config.CLIENT_ORIGINS)
             .AllowAnyHeader()
             .AllowAnyMethod()
         ));
 
         WebApplication app = builder.Build();
-        app.UseCors(BA_Conf.CORS_POLICY);
+        app.UseCors(Config.CORS_POLICY);
         app.UseWebSockets(sockOptions);
 
         // setup tcp/ws connection
-        app.Map(BA_Conf.ENDPOINT_BACKEND, async context =>
+        app.Map(Config.ENDPOINT_BACKEND, async context =>
         {
             if (!context.WebSockets.IsWebSocketRequest)
             {
@@ -55,7 +51,7 @@ public static class BA_Msgtrnsl
             using WebSocket sock = await context.WebSockets.AcceptWebSocketAsync();
 
             using TcpClient tcp = new() { NoDelay = true };
-            await tcp.ConnectAsync(IPAddress.Loopback, BA_Conf.TCP_PORT, context.RequestAborted);
+            await tcp.ConnectAsync(Config.TCP_IP, Config.TCP_PORT, context.RequestAborted);
             using NetworkStream tcpStream = tcp.GetStream();
 
             using CancellationTokenSource cancelTokenSrc =
@@ -86,15 +82,15 @@ public static class BA_Msgtrnsl
                 browserToTcp.Dispose();
                 tcpToBrowser.Dispose();
 
-                BA_AEProc.CleanUpProcess();
+                AudioEngineProcess.CleanUpProcess();
                 Environment.Exit(0);
             }
         });
 
         // return prefs as json, if file exists
-        app.MapGet(BA_Conf.ENDPOINT_PREFS, async (CancellationToken cancellationToken) =>
+        app.MapGet(Config.ENDPOINT_PREFS, async (CancellationToken cancellationToken) =>
         {
-            string filePath = BA_Conf.BA_PREFS;
+            string filePath = Config.UserPrefsPath;
 
             if (!File.Exists(filePath))
             {
@@ -106,14 +102,14 @@ public static class BA_Msgtrnsl
         });
 
         // write to prefs file
-        app.MapPut(BA_Conf.ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cancellationToken) =>
+        app.MapPut(Config.ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cancellationToken) =>
         {
             if (prefsJson.ValueKind != JsonValueKind.Object)
             {
                 return Results.BadRequest(ERR_NOT_JSON);
             }
 
-            string filePath = BA_Conf.BA_PREFS;
+            string filePath = Config.UserPrefsPath;
             string directory = Path.GetDirectoryName(filePath)!;
 
             Directory.CreateDirectory(directory); // only runs if dir doesn't exist
@@ -128,7 +124,7 @@ public static class BA_Msgtrnsl
             return Results.NoContent();
         });
 
-        BA_WS = app;
+        WebApp = app;
     }
 
     /**
@@ -139,10 +135,10 @@ public static class BA_Msgtrnsl
         WebSocket ws,
         CancellationToken cancelToken)
     {
-        byte[] buffer = new byte[BA_Conf.BUFFER_SIZE];
+        byte[] buffer = new byte[Config.BUFFER_SIZE];
         while (ws.State == WebSocketState.Open)
         {
-            int bytesRead = await tcpStream.ReadAsync(buffer.AsMemory(0, BA_Conf.BUFFER_SIZE), cancelToken);
+            int bytesRead = await tcpStream.ReadAsync(buffer.AsMemory(0, Config.BUFFER_SIZE), cancelToken);
 
             if (bytesRead == 0)
             {
@@ -162,7 +158,7 @@ public static class BA_Msgtrnsl
     static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream,
         CancellationToken cancelToken)
     {
-        byte[] buffer = new byte[BA_Conf.BUFFER_SIZE];
+        byte[] buffer = new byte[Config.BUFFER_SIZE];
         while (ws.State == WebSocketState.Open)
         {
             WebSocketReceiveResult result = await ws.ReceiveAsync(
@@ -183,20 +179,5 @@ public static class BA_Msgtrnsl
 
             await tcpStream.WriteAsync(buffer.AsMemory(0, result.Count), cancelToken);
         }
-    }
-
-    /**
-     * Explicitly define mappings for important content types
-     */
-    static FileExtensionContentTypeProvider MakeContentProvider()
-    {
-        FileExtensionContentTypeProvider provider = new();
-
-        provider.Mappings[".dat"] = "application/octet-stream";
-        provider.Mappings[".blat"] = "application/octet-stream";
-        provider.Mappings[".wasm"] = "application/wasm";
-        provider.Mappings[".dll"] = "application/octet-stream";
-
-        return provider;
     }
 }
