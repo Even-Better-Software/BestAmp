@@ -1,0 +1,184 @@
+﻿main {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#header {
+    background-color: #000;
+    color: #FFF;
+    margin: 0rem;
+    padding: 0rem;
+    padding-bottom: 1rem;
+}
+#body {
+    margin: 0rem;
+    padding: 0rem;
+    border-style: solid;
+    border-color: var(--gray);
+    border-width: 0.5rem;
+    background-image: url('/amp-speaker-grid.jpg');
+    background-repeat: repeat;
+    background-attachment: fixed;
+    background-position: left;
+    background-size: 5rem;
+    height: 100%;
+    border-radius: 0.5rem;
+}
+
+
+.control-row {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+    gap: clamp(0.5rem, 3vw, 2rem);
+}
+
+.control-item {
+    display: flex;
+    width: min(14vw, 7rem);
+    min-width: 3.5rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.control-spacer {
+    width: 2rem;
+}
+
+.control-label {
+    font-family: IBReg;
+    font-size: 24pt;
+    font-weight: 600;
+}
+
+.control-input {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.control-input img {
+    width: min(100%, 6rem);
+}
+
+.control-button {
+    max-width: 2rem;
+}
+
+.control-input input {
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.settings-container {
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 60%);
+}
+
+.settings-panel {
+    display: grid;
+    /*max-width: 60rem;*/
+    gap: 0.2rem;
+    color: #FFF;
+    padding: 1.25rem;
+}
+
+.settings-row {
+    display: grid;
+    grid-template-columns: minmax(9rem, 1fr) minmax(10rem, 2fr) minmax(9rem, 1fr) minmax(10rem, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    text-align: end;
+}
+
+.settings-row select, .settings-row input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+}
+
+.extend-to-end input, .extend-to-end select {
+    grid-column: 2 / -1;
+}
+
+.profile-select {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: top;
+    gap: 0.1rem;
+    margin-top: 0.5rem;
+    width: 100%; height: 100%;
+}
+
+.bestamp-logo {
+    font-size: 48pt;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.bestamp-logo h1 {
+    padding: 1rem;
+    margin: 0rem;
+    color: transparent;
+}
+
+.bestamp-logo-parent {
+    font-weight: 800;
+    background: linear-gradient(
+        165deg,
+        #6e737b 0%,
+        #e8ecf1 22%,
+        #8d939e 42%,
+        #f7f9fc 52%,
+        #4c515a 68%,
+        #cfd5de 86%,
+        #696e77 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+
+.error-message-container {
+    z-index: 10;
+    position: absolute;
+    width: 100%; height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+    justify-content: end;
+    gap: 0.5rem;
+    padding-bottom: 2rem;
+
+    pointer-events: none;
+}
+
+
+.message {
+    background-color: rgba(0, 0, 0, 60%);
+    width: 100%;
+    text-align: center;
+
+    pointer-events: auto;
+}
+
+.error-message {
+    color: var(--bad);
+}
+
+.info-message {
+    color: var(--ok);
+}
+

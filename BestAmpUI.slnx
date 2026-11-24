@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="BestAmpUI.Bridge/BestAmpUI.Bridge.csproj" />
+  <Project Path="BestAmpUI.Client/BestAmpUI.Client.csproj" />
+</Solution>
