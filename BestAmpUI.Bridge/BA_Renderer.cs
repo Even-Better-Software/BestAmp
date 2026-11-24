@@ -4,7 +4,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Microsoft.Web.WebView2.Core;
 
 
-namespace BestAmpUI.Bridge.BA_Renderer;
+namespace BestAmpUI.Bridge;
 
 public static class BA_Renderer
 {
@@ -42,8 +42,8 @@ public static class BA_Renderer
 
             try
             {
-                string wwwroot = BA_Conf.BA_Conf.BA_AE_GUI;
-                string ddir = BA_Conf.BA_Conf.BA_USER_DIR;
+                string wwwroot = BA_Conf.BA_AE_GUI;
+                string ddir = BA_Conf.BA_USER_DIR;
 
                 Directory.CreateDirectory(ddir);
                 CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(userDataFolder: ddir);

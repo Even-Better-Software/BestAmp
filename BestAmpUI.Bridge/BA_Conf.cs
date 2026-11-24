@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Reflection;
 
-namespace BestAmpUI.Bridge.BA_Conf;
+namespace BestAmpUI.Bridge;
 
 public static class BA_Conf
 {

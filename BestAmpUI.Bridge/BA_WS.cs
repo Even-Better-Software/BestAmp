@@ -9,10 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using System.Text.Json;
 
-using BestAmpUI.Bridge.BA_Conf;
-using BestAmpUI.Bridge.BA_AEProc;
-
-namespace BestAmpUI.Bridge.BA_Msgtrnsl;
+namespace BestAmpUI.Bridge;
 
 
 public static class BA_Msgtrnsl
@@ -31,23 +28,23 @@ public static class BA_Msgtrnsl
     {
         WebSocketOptions sockOptions = new()
         {
-            KeepAliveInterval = TimeSpan.FromSeconds(BA_Conf.BA_Conf.KEEP_ALIVE_INTERVAL),
+            KeepAliveInterval = TimeSpan.FromSeconds(BA_Conf.KEEP_ALIVE_INTERVAL),
         };
 
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls([BA_Conf.BA_Conf.BRIDGE_ADDRESS]);
-        builder.Services.AddCors(options => options.AddPolicy(BA_Conf.BA_Conf.CORS_POLICY, policy => policy
-            .WithOrigins(BA_Conf.BA_Conf.CLIENT_ORIGINS)
+        builder.WebHost.UseUrls([BA_Conf.BRIDGE_ADDRESS]);
+        builder.Services.AddCors(options => options.AddPolicy(BA_Conf.CORS_POLICY, policy => policy
+            .WithOrigins(BA_Conf.CLIENT_ORIGINS)
             .AllowAnyHeader()
             .AllowAnyMethod()
         ));
 
         WebApplication app = builder.Build();
-        app.UseCors(BA_Conf.BA_Conf.CORS_POLICY);
+        app.UseCors(BA_Conf.CORS_POLICY);
         app.UseWebSockets(sockOptions);
 
         // setup tcp/ws connection
-        app.Map(BA_Conf.BA_Conf.ENDPOINT_BACKEND, async context =>
+        app.Map(BA_Conf.ENDPOINT_BACKEND, async context =>
         {
             if (!context.WebSockets.IsWebSocketRequest)
             {
@@ -58,7 +55,7 @@ public static class BA_Msgtrnsl
             using WebSocket sock = await context.WebSockets.AcceptWebSocketAsync();
 
             using TcpClient tcp = new() { NoDelay = true };
-            await tcp.ConnectAsync(IPAddress.Loopback, BA_Conf.BA_Conf.TCP_PORT, context.RequestAborted);
+            await tcp.ConnectAsync(IPAddress.Loopback, BA_Conf.TCP_PORT, context.RequestAborted);
             using NetworkStream tcpStream = tcp.GetStream();
 
             using CancellationTokenSource cancelTokenSrc =
@@ -89,15 +86,15 @@ public static class BA_Msgtrnsl
                 browserToTcp.Dispose();
                 tcpToBrowser.Dispose();
 
-                BA_AEProc.BA_AEProc.CleanUpProcess();
+                BA_AEProc.CleanUpProcess();
                 Environment.Exit(0);
             }
         });
 
         // return prefs as json, if file exists
-        app.MapGet(BA_Conf.BA_Conf.ENDPOINT_PREFS, async (CancellationToken cancellationToken) =>
+        app.MapGet(BA_Conf.ENDPOINT_PREFS, async (CancellationToken cancellationToken) =>
         {
-            string filePath = BA_Conf.BA_Conf.BA_PREFS;
+            string filePath = BA_Conf.BA_PREFS;
 
             if (!File.Exists(filePath))
             {
@@ -109,14 +106,14 @@ public static class BA_Msgtrnsl
         });
 
         // write to prefs file
-        app.MapPut(BA_Conf.BA_Conf.ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cancellationToken) =>
+        app.MapPut(BA_Conf.ENDPOINT_PREFS, async (JsonElement prefsJson, CancellationToken cancellationToken) =>
         {
             if (prefsJson.ValueKind != JsonValueKind.Object)
             {
                 return Results.BadRequest(ERR_NOT_JSON);
             }
 
-            string filePath = BA_Conf.BA_Conf.BA_PREFS;
+            string filePath = BA_Conf.BA_PREFS;
             string directory = Path.GetDirectoryName(filePath)!;
 
             Directory.CreateDirectory(directory); // only runs if dir doesn't exist
@@ -142,10 +139,10 @@ public static class BA_Msgtrnsl
         WebSocket ws,
         CancellationToken cancelToken)
     {
-        byte[] buffer = new byte[BA_Conf.BA_Conf.BUFFER_SIZE];
+        byte[] buffer = new byte[BA_Conf.BUFFER_SIZE];
         while (ws.State == WebSocketState.Open)
         {
-            int bytesRead = await tcpStream.ReadAsync(buffer.AsMemory(0, BA_Conf.BA_Conf.BUFFER_SIZE), cancelToken);
+            int bytesRead = await tcpStream.ReadAsync(buffer.AsMemory(0, BA_Conf.BUFFER_SIZE), cancelToken);
 
             if (bytesRead == 0)
             {
@@ -165,7 +162,7 @@ public static class BA_Msgtrnsl
     static async Task ForwardBrowserToTcpAsync(WebSocket ws, NetworkStream tcpStream,
         CancellationToken cancelToken)
     {
-        byte[] buffer = new byte[BA_Conf.BA_Conf.BUFFER_SIZE];
+        byte[] buffer = new byte[BA_Conf.BUFFER_SIZE];
         while (ws.State == WebSocketState.Open)
         {
             WebSocketReceiveResult result = await ws.ReceiveAsync(

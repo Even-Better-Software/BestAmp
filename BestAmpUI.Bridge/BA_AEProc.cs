@@ -1,7 +1,7 @@
 using System.Diagnostics;
 
 
-namespace BestAmpUI.Bridge.BA_AEProc;
+namespace BestAmpUI.Bridge;
 
 public static class BA_AEProc
 {
@@ -10,7 +10,7 @@ public static class BA_AEProc
 
     public static void SpawnProcess()
     {
-        if (!Path.Exists(BA_Conf.BA_Conf.BA_AE_BIN))
+        if (!Path.Exists(BA_Conf.BA_AE_BIN))
         {
             Console.Error.WriteLine("Missing BestAmp binary. Check your installation.");
             Environment.Exit(1);
@@ -18,7 +18,7 @@ public static class BA_AEProc
 
         Process audioEngine = new();
         audioEngine.StartInfo.UseShellExecute = true;
-        audioEngine.StartInfo.FileName = BA_Conf.BA_Conf.BA_AE_BIN;
+        audioEngine.StartInfo.FileName = BA_Conf.BA_AE_BIN;
         audioEngine.StartInfo.CreateNoWindow = false;
         audioEngine.Start();
 
