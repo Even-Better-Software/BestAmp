@@ -88,7 +88,7 @@ processRequest_t processRequest(appInfo_t* app, tcpState_t* tcp,
         if (err != paNoError) {
             LWARN("format supported error: %s", Pa_GetErrorText(err));
             reply.code = 1;
-            updatePreferencesReply(rmsg, tcp->rbuffer, &reply);
+            updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
             return BA_CONTINUE;
         }
         // Format supported, so pTemp becomes app->prefs
