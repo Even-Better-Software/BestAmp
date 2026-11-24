@@ -70,7 +70,7 @@ public static class BA_Conf
 
     private static string _res_dir()
     {
-        string assem = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+        string assem = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
         string r = assem;
 #if DEBUG
         r = Path.GetFullPath(Environment.GetEnvironmentVariable(_ebdirenv) ?? assem);
