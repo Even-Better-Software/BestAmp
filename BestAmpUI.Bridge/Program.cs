@@ -3,15 +3,15 @@ using BestAmpUI.Bridge;
 // BestAmp
 try
 {
-    BA_AEProc.SpawnProcess();
-    await BA_Msgtrnsl.BA_WS.StartAsync();
+    AudioEngineProcess.SpawnProcess();
+    await MessageTranslator.WebApp.StartAsync();
 
-    BA_Renderer.BA_UI_THREAD.SetApartmentState(ApartmentState.STA); 
-    BA_Renderer.BA_UI_THREAD.Start();
-    BA_Renderer.BA_UI_THREAD.Join();
+    Renderer.UIThread.SetApartmentState(ApartmentState.STA); 
+    Renderer.UIThread.Start();
+    Renderer.UIThread.Join();
 } finally
 {
-    await BA_Msgtrnsl.BA_WS.StopAsync();
-    BA_AEProc.CleanUpProcess();
+    await MessageTranslator.WebApp.StopAsync();
+    AudioEngineProcess.CleanUpProcess();
 }
 
