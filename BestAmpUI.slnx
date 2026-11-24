@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="BestAmpUI.Bridge/BestAmpUI.Bridge.csproj" />
-  <Project Path="BestAmpUI.Client/BestAmpUI.Client.csproj" />
+  <Project Path="BestAmp.App/BestAmp.App.csproj" />
+  <Project Path="BestAmp.GUI/BestAmp.GUI.csproj" />
 </Solution>
