@@ -39,7 +39,9 @@ public static class Renderer
             try
             {
                 Directory.CreateDirectory(Config.DataDir);
-                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(Config.DataDir);
+                CoreWebView2Environment env = await CoreWebView2Environment.CreateAsync(
+                    null, Config.DataDir, null
+                );
                 await webView.EnsureCoreWebView2Async(env);
                 webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     Config.VHOST_NAME,

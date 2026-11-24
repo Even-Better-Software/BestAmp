@@ -100,7 +100,7 @@ public static class Config
 #else
         dir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            BA_DATA_DIR
+            DIR_DATA
         );
 #endif
 
