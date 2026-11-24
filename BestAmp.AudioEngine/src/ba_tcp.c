@@ -1,0 +1,529 @@
+#include "ba_tcp.h"
+
+
+void initTcpState(tcpState_t* tcp)
+{
+    tcp->sSocket = INVALID_SOCKET;
+    tcp->cSocket = INVALID_SOCKET;
+    tcp->result = NULL;
+    tcp->rbuffer = NULL;
+    tcp->rbufferSize = BA_BUFLEN;
+    tcp->wbuffer = NULL;
+    tcp->wbufferSize = BA_BUFLEN;
+    tcp->sts = 0;
+
+    ZeroMemory(&tcp->hints, sizeof (tcp->hints));
+    tcp->hints.ai_family     = AF_INET;
+    tcp->hints.ai_socktype   = SOCK_STREAM;
+    tcp->hints.ai_protocol   = IPPROTO_TCP;
+    tcp->hints.ai_flags      = AI_PASSIVE;
+}
+
+void cleanupTcpState(tcpState_t* tcp)
+{
+    if (tcp->rbuffer != NULL)
+        free(tcp->rbuffer);
+    if (tcp->wbuffer != NULL)
+        free(tcp->wbuffer);
+}
+
+
+
+processRequest_t processRequest(appInfo_t* app, tcpState_t* tcp,
+    message_t* msg, message_t* rmsg
+) {
+    PaError err;
+
+    // A valid request message
+    switch (msg->type) {
+    case UPDATE_PREFS: {
+        LINFO("%d update prefs message received", msg->type);
+
+        // Parse prefs from message
+        baPrefs_t pTemp;
+        updatePrefsRep_t reply = {0};
+        initBaPrefs(&pTemp);
+        parsePrefsFromMsg(&pTemp, msg, tcp->rbuffer);
+        printBaPrefs(&pTemp);
+        coalesceBaPrefsToPaDefaults(&pTemp);
+        printBaPrefs(&pTemp);
+
+        if (app->streamRunning) {
+            err = Pa_StopStream(app->stream);
+            if (err != paNoError) {
+                LERROR("portaudio stream was running but could not stopped on update");
+                return BA_ERROR_FATAL;
+            }
+        }
+        if (app->streamOpen) {
+            err = Pa_CloseStream(app->stream);
+            if (err != paNoError) {
+                LERROR("portaudio stream was open but coudl not be closed on update");
+                return BA_ERROR_FATAL;
+            }
+        }
+
+        // Create Input/Output stream parameters
+        PaStreamParameters iStreamParams, oStreamParams;
+
+        iStreamParams.device = pTemp.inDevIdx;
+        iStreamParams.channelCount = pTemp.inChanneln;
+        iStreamParams.suggestedLatency = pTemp.inDev->defaultLowInputLatency;
+        iStreamParams.sampleFormat = pTemp.sampleFormat;
+        iStreamParams.hostApiSpecificStreamInfo = NULL;
+
+        oStreamParams.device = pTemp.outDevIdx;
+        oStreamParams.channelCount = pTemp.outChanneln;
+        oStreamParams.suggestedLatency = pTemp.outDev->defaultLowOutputLatency;
+        oStreamParams.sampleFormat = pTemp.sampleFormat;
+        oStreamParams.hostApiSpecificStreamInfo = NULL;
+
+        // Is format supported test 
+        // Pa_IsFormatSupported
+        // if the format it not supported we write a bad message reply
+        //      we should not write a bad message reply, rather the reply as per the spec
+        // return from this method w/ BA_CONTINUE (since the server is fine, basically we are dropping this request)
+        // send the update prefs bad preferences reply
+        err = Pa_IsFormatSupported(&iStreamParams, &oStreamParams, pTemp.sampleRate);
+        if (err != paNoError) {
+            LWARN("format supported error: %s", Pa_GetErrorText(err));
+            reply.code = 1;
+            updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
+            return BA_CONTINUE;
+        }
+        // Format supported, so pTemp becomes app->prefs
+        app->baPrefs = pTemp;
+        ampVoice_t cVoice = getAmpVoice(app->ampValues.voice);
+
+        // Initial biquad calculation
+        biQuadFilter_lowShelf(
+            &app->ampValues.bqf_bass,
+            (float)app->ampValues.bassDb,
+            (float)app->baPrefs.sampleRate,
+            cVoice.bassCornerFreq);
+        biQuadFilter_highShelf(
+            &app->ampValues.bqf_treble,
+            (float)app->ampValues.trebleDb,
+            (float)app->baPrefs.sampleRate,
+            cVoice.trebleCornerFreq);
+
+        // Start the portaudio stream
+        err = Pa_OpenStream(  &app->stream,
+                            &iStreamParams,
+                            &oStreamParams,
+                            app->baPrefs.sampleRate,
+                            app->baPrefs.framesPerBuffer,
+                            0,
+                            bestAmpCB,
+                            app );
+        if (err != paNoError) {
+            LWARN("portaudio stream open error: %s", Pa_GetErrorText(err));
+            reply.code = 1;
+            updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
+            return BA_CONTINUE;
+        }
+        app->streamOpen = 1;
+        err = Pa_StartStream(app->stream);
+        if (err != paNoError) {
+            LWARN("portaudio start stream error: %s", Pa_GetErrorText(err));
+            reply.code = 1;
+            updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
+            return BA_CONTINUE;
+        }
+        LINFO("portaudio stream started");
+        app->streamRunning = 1;
+
+        // Send the update prefs OK reply
+        reply.code = 0;
+        updatePreferencesReply(rmsg, tcp->wbuffer, &reply);
+        return BA_CONTINUE;
+
+    }
+    case UPDATE_AMP_VALS: {
+        LINFO("%d update amp values message recevied", msg->type);
+
+        ampValues_t avTemp;
+        initAmpValues(&avTemp);
+        parseAmpValuesFromMsg(&avTemp, msg, tcp->rbuffer);
+        printAmpValues(&avTemp);
+        ampVoice_t cVoice = getAmpVoice(avTemp.voice);
+        // recalculate biquads
+        biQuadFilter_lowShelf(
+            &avTemp.bqf_bass,
+            (float)avTemp.bassDb,
+            (float)app->baPrefs.sampleRate,
+            cVoice.bassCornerFreq);
+        biQuadFilter_highShelf(
+            &avTemp.bqf_treble,
+            (float)avTemp.trebleDb,
+            (float)app->baPrefs.sampleRate,
+            cVoice.trebleCornerFreq);
+        // because it is not possible for this to fail
+        // we can send the generic OK reply
+        //      actually I can envision a situation where this does fail
+        //      say that a bad voice value is supplied, we should tell the
+        //      client about this & then use the default voice (voice 0)
+        app->ampValues = avTemp;
+        genericOkReply(rmsg, tcp->wbuffer);
+        return BA_CONTINUE;
+
+    }
+    case QUERY_HOST_APIS: {
+        LINFO("%d query host APIs message recevied", msg->type);
+
+        queryHostApiRep_t reply = { 0 };
+
+        // ask port audio for the host APIs
+        // just pass this to the message processor basically
+        // I need memory, I need N * sizeof() to store const pointers to hostapi info structs
+        PaHostApiIndex hostApiCount = Pa_GetHostApiCount();
+        LINFO("%d host apis", hostApiCount);
+        const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+            calloc(hostApiCount, sizeof(PaHostApiIndex*));
+        for (int i = 0; i < hostApiCount; i++) {
+            const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(i);
+            *(hostApis + i) = hinfo;
+        }
+        reply.hostApiCount = hostApiCount;
+        reply.hostApis = hostApis;
+
+        size_t replySizeEstimate = ((hostApiCount * (44)) + 8); // 4B id + 32B name 
+        LINFO("%lld message size, %lld buffer size",
+            replySizeEstimate, tcp->wbufferSize);
+
+        // scale wbuffer if necessary
+        if (replySizeEstimate >= tcp->wbufferSize) {
+            LWARN("reply message overflow risk");
+            BA_GROW_WBUFFER(replySizeEstimate);
+        }
+
+        queryHostApisReply(rmsg, tcp->wbuffer, &reply);
+
+        free(hostApis);
+
+        return BA_CONTINUE;
+
+    }
+    case QUERY_DEFAULT_HOST_API: {
+        LINFO("%d query default host API msg recevied", msg->type);
+
+        int hostApiCount = 1;
+        queryHostApiRep_t reply = { 0 };
+
+        // ask port audio for the default host API
+        //      if the default host API cannot be queried this is a fatal case
+        PaHostApiIndex hostApiIndex = Pa_GetDefaultHostApi();
+        if (hostApiIndex < 0) {
+            LERROR("could not get the default host API");
+            return BA_ERROR_FATAL;
+        }
+        
+        // fprintf(stderr, "%d host apis\n", hostApiCount);
+        const PaHostApiInfo** hostApis = (const PaHostApiInfo**)
+            calloc(hostApiCount, sizeof(PaHostApiIndex*));
+        const PaHostApiInfo* hinfo = Pa_GetHostApiInfo(hostApiIndex);
+        *(hostApis + 0) = hinfo;
+        reply.hostApiCount = hostApiCount;
+        reply.hostApis = hostApis;
+
+        queryHostApisReply(rmsg, tcp->wbuffer, &reply);
+
+        free(hostApis);
+
+        return BA_CONTINUE;
+
+    }
+    case QUERY_DEVICES_FOR_HOST_API: {
+        LINFO("%d query devices message recieved", msg->type);
+
+        int hostApiIdx = 0;
+        queryDeviceRep_t reply = {0};
+        parseDeviceQueryFromMsg(&hostApiIdx, msg, tcp->rbuffer);
+
+        LINFO("query devices for %d host API idx", hostApiIdx);
+
+        // Get the Host API Info Struct
+        //      if this fails, then the index supplied is invalid so
+        //      we send the bad reply back to the client
+        const PaHostApiInfo* hostApi = Pa_GetHostApiInfo(hostApiIdx);
+        if (hostApi == NULL) {
+            LWARN("used supplied host API idx was bad");
+            queryDevicesBadReply(rmsg, tcp->wbuffer);
+            return BA_CONTINUE;
+        }
+        reply.hostApiIdx = hostApiIdx;
+        reply.deviceIdxes = (int*)
+            calloc(hostApi->deviceCount, sizeof(int));
+        reply.devices = (const PaDeviceInfo**)
+            calloc(hostApi->deviceCount, sizeof(PaDeviceInfo*));
+        reply.deviceCount = hostApi->deviceCount;
+        for (int i = 0; i < hostApi->deviceCount; i++) {
+            PaDeviceIndex deviceIdx     = Pa_HostApiDeviceIndexToDeviceIndex(hostApiIdx, i);
+            const PaDeviceInfo* device  = Pa_GetDeviceInfo(deviceIdx);
+            *(reply.deviceIdxes + i)    = deviceIdx;
+            *(reply.devices + i)        = device;
+        }
+
+        // 4 32 4 4 8 = 52 bytes per device
+        size_t replySizeEstimate = ((hostApi->deviceCount * (52)) + 8);
+        LINFO("%lld message size, %lld buffer size",
+            replySizeEstimate, tcp->wbufferSize);
+
+        // scale wbuffer if necessary
+        if (replySizeEstimate >=tcp->wbufferSize) {
+            LWARN("reply message overflow risk");
+            BA_GROW_WBUFFER(replySizeEstimate);
+        }
+
+        queryDevicesReply(rmsg, tcp->wbuffer, &reply);
+
+        free(reply.deviceIdxes);
+        free(reply.devices);
+
+        return BA_CONTINUE;
+    }
+    case QUERY_AMP_VOICES: {
+        LINFO("%d query amp voices message received", msg->type);
+
+        size_t replySizeEstimate = ((getAmpVoiceCount() * (36)) + 8);
+        LINFO("%lld message size, %lld buffer size",
+            replySizeEstimate, tcp->wbufferSize);
+
+        // scale wbuffer if necessary
+        if (replySizeEstimate >= tcp->wbufferSize) {
+            LWARN("reply message overflow risk");
+            BA_GROW_WBUFFER(replySizeEstimate);
+        }
+        queryAmpVoicesReply(rmsg, tcp->wbuffer);
+
+        return BA_CONTINUE;
+    }
+    case KILL: {
+        LINFO("%d kill message received", msg->type);
+        LWARN("this message will do nothing");
+        return BA_CONTINUE;
+
+    }
+    default: {
+        LWARN("unknown message type received & ignored");
+        return BA_CONTINUE;
+    }}
+}
+
+
+int initWinsock(appInfo_t* app) {
+    tcpState_t tcp = { 0 };
+    initTcpState(&tcp);
+
+    int exitCode = 0;
+
+    // Initialize Winsock
+    int status = WSAStartup(MAKEWORD(2,2), &tcp.wsaData); // need to manually ensure version 2.2 for some reason
+    if (status != 0) {
+        LERROR("WSAStartup failed: %d", status);
+        return 1;
+    }
+
+    // Resolve the local address and port to be used by the server
+    status = getaddrinfo(NULL, BA_PORT, &tcp.hints, &tcp.result);
+    if (status != 0) {
+        LERROR("getaddrinfo failed: %d", status);
+        freeaddrinfo(tcp.result);
+        return 1;
+    }
+    // Create the server socket
+    tcp.sSocket = socket(tcp.result->ai_family, tcp.result->ai_socktype, tcp.result->ai_protocol);
+    if (tcp.sSocket == INVALID_SOCKET) {
+        LERROR("error at socket creation: %d", WSAGetLastError());
+        freeaddrinfo(tcp.result);
+        closesocket(tcp.sSocket);
+        return 1;
+    }
+    // Setup the TCP listening socket
+    status = bind(tcp.sSocket,
+        tcp.result->ai_addr, (int)tcp.result->ai_addrlen);
+    if (status == SOCKET_ERROR) {
+        LERROR("error at socket bind: %d", WSAGetLastError());
+        freeaddrinfo(tcp.result);
+        closesocket(tcp.sSocket);
+        return 1;
+    }
+    // addrinfo needs to be cleaned up
+    freeaddrinfo(tcp.result);
+    // start listening
+    if (listen(tcp.sSocket, 1) == SOCKET_ERROR) { // allow only 1 connection in the backlog
+        LERROR("error while opening socket for listening: %d",
+            WSAGetLastError());
+        closesocket(tcp.sSocket);
+        return 1;
+    }
+    LINFO("BestAmp audio engine listening on port %d", BA_PORT_I);
+    // accept a client
+    tcp.cSocket = accept(tcp.sSocket, NULL, NULL);
+    if (tcp.cSocket == INVALID_SOCKET) {
+        LERROR("error while accepting connection on socket: %d",
+            WSAGetLastError());
+        closesocket(tcp.sSocket);
+        return 1;
+    }
+    LINFO("client connected");
+    // no need to keep the original socket anymore, we just want the one client socket
+    closesocket(tcp.sSocket);
+
+
+    // Receive until the peer shuts down the connection
+    // so I know that the memory is zeroed
+    tcp.rbuffer = (char*)calloc(tcp.rbufferSize, sizeof(char));
+    tcp.wbuffer = (char*)calloc(tcp.wbufferSize, sizeof(char));
+
+    message_t reqMsg = { 0 };
+    message_t repMsg = { 0 };
+    
+    size_t readoffset = 0;
+    do {
+        // accept an incoming message at least the header size
+        do {
+            status = recv(tcp.cSocket,
+                (tcp.rbuffer + readoffset), 
+                (tcp.rbufferSize - readoffset), 0);
+            if (status == 0) {
+                LINFO("Connection closing...");
+                byeMessageReply(&repMsg, tcp.wbuffer);
+                tcp.sts = 1;
+                goto cleanup;
+            } else if (status < 0) {
+                LERROR("recv on incoming message failed: %d", WSAGetLastError());
+                byeMessageReply(&repMsg, tcp.wbuffer);
+                tcp.sts = 1;
+                exitCode = 1;
+                goto cleanup;
+            }
+            readoffset += status;
+        } while (readoffset < BA_HEADER_SIZE_B);
+
+        // parse the message header determining if its a valid type of message
+        // and how much more reading, if any, is required to do over the wire
+        status = parseMessage(&reqMsg, tcp.rbuffer);
+        size_t request = BA_HEADER_SIZE_B + reqMsg.length;
+        if (status < 0) {
+            // dont process anything just write the bad message reply
+            LWARN("bad message recieved");
+            badMessageReply(&repMsg, tcp.wbuffer);
+        } else {
+            // in the case that there is more content to read of the message
+            if (readoffset < request) {
+                LWARN("did not read entire message");
+                do {
+                    status = recv(tcp.cSocket,
+                        (tcp.rbuffer + readoffset),
+                        (tcp.rbufferSize - readoffset), 0);
+                    if (status == 0) {
+                        LINFO("Connection closing...");
+                        byeMessageReply(&repMsg, tcp.wbuffer);
+                        tcp.sts = 1;
+                        goto cleanup;
+                    } else if (status < 0) {
+                        LERROR("recv on incoming message failed: %d", WSAGetLastError());
+                        byeMessageReply(&repMsg, tcp.wbuffer);
+                        tcp.sts = 1;
+                        exitCode = 1;
+                        goto cleanup;
+                    }
+                    readoffset += status;
+                } while (readoffset < request);
+            } 
+
+            // process request / message (delegates to message handlers)
+            // process message paths will write specific replies to `repMsg`
+            //      where this is the accounting for the message
+            // and into `tcp.wbuffer`
+            //      where this is the data for the message
+            status = processRequest(app, &tcp, &reqMsg, &repMsg);
+            if (status == BA_ERROR_FATAL) {
+                LERROR("fatal error while processing request message");
+                badMessageReply(&repMsg, tcp.wbuffer);
+                tcp.sts = 1;
+                exitCode = 1;
+                goto cleanup;
+            }
+            printMessage(&repMsg);
+        }
+
+        // implementation of a safe send
+        //      keep calling `send` while the number of sent bytes is
+        //      less than what the message contains
+        size_t reply = BA_HEADER_SIZE_B + repMsg.length;
+        size_t sent = 0;
+        do {
+            status = send(tcp.cSocket, (tcp.wbuffer + sent),
+                reply - sent, 0);
+            if (status == SOCKET_ERROR) {
+                LERROR("fatal error while submitting reply message");
+                exitCode = 1;
+                goto cleanup;
+            }
+            sent += status;
+        } while (sent < reply);
+        LINFO("Bytes sent: %lld", sent);
+
+        // check if we read part of the next message, in which case we will
+        // need to shift me memory back by the number of bytes in the current
+        // complete message & also keep a read offset which would be incremented
+        // by the number of bytes in the next message
+        //      `leftovers`
+        //          the actual number of extra bytes
+        //      `readoffset`
+        //          meaning where the next read should start ie the end of the leftover bytes
+        size_t leftovers = readoffset - request;
+        if (leftovers > 0) {
+            memmove(tcp.rbuffer, tcp.rbuffer + request, leftovers);
+            readoffset = leftovers;
+        } else {
+            memset(tcp.rbuffer, 0, tcp.rbufferSize);
+            readoffset = 0;
+        }
+        memset(tcp.wbuffer, 0, tcp.wbufferSize);
+
+        memset(&repMsg, 0, sizeof(message_t));
+        memset(&repMsg, 0, sizeof(message_t));
+        
+        tcp.sts = 0;
+
+    } while (1);
+
+cleanup:
+    // final reply attempt
+    if (tcp.sts == 1 && tcp.cSocket != INVALID_SOCKET) {
+        int status = send(tcp.cSocket,
+            tcp.wbuffer, repMsg.length + BA_HEADER_SIZE_B, 0);
+        if (status == SOCKET_ERROR) {
+            LERROR("final send failed: %d", status);
+        } else {
+            LINFO("final bytes sent: %d", status);
+        }
+        tcp.sts = 0;
+    }
+
+    // Portaudio specific stream shutdown
+    if (app->streamRunning)
+        Pa_StopStream(app->stream);
+    if (app->streamOpen)
+        Pa_CloseStream(app->stream);
+
+    // Socket cleanup
+    cleanupTcpState(&tcp);
+    if (tcp.cSocket != INVALID_SOCKET) {
+        shutdown(tcp.cSocket, SD_SEND);
+        closesocket(tcp.cSocket);
+    }
+    WSACleanup();
+    
+    if (exitCode == 0) {
+        LINFO("tcp server closed without error");
+        return 0;
+    } else {
+        LINFO("tcp server closed with error");
+        return 1;
+    }
+}
+

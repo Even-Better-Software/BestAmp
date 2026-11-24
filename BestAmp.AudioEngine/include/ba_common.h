@@ -1,0 +1,71 @@
+#ifndef BA_COMMON
+#define BA_COMMON
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <portaudio.h>
+
+
+#define true    (1)
+#define false   (0)
+
+// #define max(m,n) ((m)>(n)?(m):(n))
+// #define min(m,n) ((m)<(n)?(m):(n))
+
+#define BA_PORT "7080"
+#define BA_PORT_I (7081)
+
+// [WO] inital buffer size
+#define BA_BUFLEN (4096)
+// [WO] 1MB max possible buffer size
+#define BA_BUFLEN_ABS (1024*1024)
+
+#define BA_INFO    "\033[32m[INFO]\033[0m "
+#define BA_WARN    "\033[33m[WARN]\033[0m "
+#define BA_ERROR   "\033[31m[ERROR]\033[0m "
+
+
+#define LINFO(fmt, ...) do {                            \
+        time_t rawtime;                                 \
+        struct tm timeinfo;                             \
+        char timebuffer[32];                            \
+        time(&rawtime);                                 \
+        localtime_s(&timeinfo, &rawtime);               \
+        strftime(timebuffer, sizeof(timebuffer),        \
+            "%Y-%m-%d %H:%M:%S", &timeinfo);            \
+        fprintf((stderr), BA_INFO "[%s] " fmt "\n",     \
+            timebuffer, ##__VA_ARGS__);                 \
+    } while (0)
+#define LWARN(fmt, ...) do {                            \
+        time_t rawtime;                                 \
+        struct tm timeinfo;                             \
+        char timebuffer[32];                            \
+        time(&rawtime);                                 \
+        localtime_s(&timeinfo, &rawtime);               \
+        strftime(timebuffer, sizeof(timebuffer),        \
+            "%Y-%m-%d %H:%M:%S", &timeinfo);            \
+        fprintf((stderr), BA_WARN "[%s] " fmt "\n",     \
+            timebuffer, ##__VA_ARGS__);                 \
+    } while (0)
+#define LERROR(fmt, ...) do {                           \
+        time_t rawtime;                                 \
+        struct tm timeinfo;                             \
+        char timebuffer[32];                            \
+        time(&rawtime);                                 \
+        localtime_s(&timeinfo, &rawtime);               \
+        strftime(timebuffer, sizeof(timebuffer),        \
+            "%Y-%m-%d %H:%M:%S", &timeinfo);            \
+        fprintf((stderr), BA_ERROR "[%s] " fmt "\n",    \
+            timebuffer, ##__VA_ARGS__);                 \
+    } while (0)
+
+
+/**
+doubles the given buffer `buf` from `bufSize`, returns the new buffer size.
+*/
+ptrdiff_t bufRealloc(char** buf, size_t bufSize);
+
+
+#endif
+
