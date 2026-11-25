@@ -26,20 +26,6 @@ DIST = ./dist
 
 
 
-audio-engine:
-> (cd $(AE); make $(AE_ARGS); cd ../)
-
-gui:
-> (cd $(GUI); $(NET) publish; cd ../)
-
-app: audio-engine gui
-> (cd $(APP); $(NET) $(NET_FLAGS); cd ../)
-> cp $(AE_DP) $(AE_CU) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/
-> cp $(GUI_WWWROOT) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/ --recursive
-
-
-
-
 all: NET_FLAGS += publish
 all: BDIR = Release
 all: audio-engine gui app run
@@ -53,6 +39,17 @@ debug: AE_ARGS += debug
 debug: BDIR = Debug
 debug: audio-engine gui app run-debug
 
+
+audio-engine:
+> (cd $(AE); make $(AE_ARGS); cd ../)
+
+gui:
+> (cd $(GUI); $(NET) publish; cd ../)
+
+app: audio-engine gui
+> (cd $(APP); $(NET) $(NET_FLAGS); cd ../)
+> cp $(AE_DP) $(AE_CU) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/
+> cp $(GUI_WWWROOT) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/ --recursive
 
 
 
