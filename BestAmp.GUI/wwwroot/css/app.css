@@ -9,6 +9,7 @@
 }
 
 :root {
+    --bg: #0f0f0f;
     --test: "test";
     --test-c: #F00;
     --gray: #222;
@@ -20,7 +21,7 @@
 html {
     overflow: hidden;
     color: #FFF;
-    background-color: #000;
+    background-color: var(--bg);
 
     box-sizing: border-box;
     height: 100%; width: 100%;
