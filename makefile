@@ -14,24 +14,16 @@ BDIR =
 AE = ./BestAmp.AudioEngine
 AE_ARGS =
 AE_BIN = BestAmp.AudioEngine.exe
-AE_DP = $(AE)/build/*.dll
-AE_CU = $(AE)/build/$(AE_BIN)
+AE_DP = $(AE)/bin/*.dll
+AE_CU = $(AE)/bin/$(AE_BIN)
 
 GUI = ./BestAmp.GUI
 GUI_WWWROOT = $(GUI)/bin/Release/$(NET_VERSION)/publish/wwwroot/
 
 APP = ./BestAmp.App
 
+DIST = ./dist
 
-
-all: NET_FLAGS += publish
-all: BDIR = Release
-all: audio-engine gui app run
-
-debug: NET_FLAGS += build --configuration Debug
-debug: AE_ARGS += debug
-debug: BDIR = Debug
-debug: audio-engine gui app run-debug
 
 
 audio-engine:
@@ -46,12 +38,29 @@ app: audio-engine gui
 > cp $(GUI_WWWROOT) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/ --recursive
 
 
+
+
+all: NET_FLAGS += publish
+all: BDIR = Release
+all: audio-engine gui app run
+
+publish: NET_FLAGS += publish
+publish: BDIR = Release
+publish: audio-engine gui app publish
+
+debug: NET_FLAGS += build --configuration Debug
+debug: AE_ARGS += debug
+debug: BDIR = Debug
+debug: audio-engine gui app run-debug
+
+
+
+
 run:
 > $(APP)/bin/Release/$(NET_VERSION_WIN)/BestAmp.App.exe
 
 run-debug:
 > $(APP)/bin/Debug/$(NET_VERSION_WIN)/BestAmp.App.exe
-
 
 clean:
 > echo "this does nothing rn"
@@ -59,3 +68,12 @@ clean:
 # > (echo $(GUI)/bin/*; rm $(GUI)/bin/* -rfI)
 # > (echo $(APP)/bin/*; rm $(APP)/bin/* -rfI)
 
+publish: $(DIST)
+> cp $(APP)/bin/Release/$(NET_VERSION_WIN)/* $(DIST)/ --recursive
+
+clean-publish: $(DIST)
+> echo "$(DIST)/*"
+> rm $(DIST)/* -rfI
+
+$(DIST):
+> mkdir -p $(DIST)

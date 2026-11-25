@@ -5,7 +5,7 @@ CFLAGS  = -Wall -Wextra -Iinclude -Iexternal/portaudio/include
 
 LDFLAGS = -Lexternal/portaudio/lib -lportaudio -lws2_32
 
-BUILD_DIR   = build
+BUILD_DIR   = bin
 TARGET      = $(BUILD_DIR)/BestAmp.AudioEngine.exe
 
 SRC_DIR     = src
@@ -105,10 +105,9 @@ $(DLL_DEST): $(DLL_SRC) | $(BUILD_DIR)
 
 
 clean:
->- rm ./build/*.o
->- rm ./build/*.dll
+>- rm $(BUILD_DIR)/*.o -I
+>- rm $(BUILD_DIR)/*.dll -I
 >- rm $(TARGET)
 
 clean-stats:
->- rm ./build/stats.exe
-
+>- rm $(BUILD_DIR)/stats.exe
