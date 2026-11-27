@@ -1,4 +1,4 @@
-name: Build BestAmp
+name: Build BestAmp Windows
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-
+    name: Build BestAmp Windows
     runs-on: windows-latest
 
     steps:
