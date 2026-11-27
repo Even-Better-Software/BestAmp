@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-defaults:
-  run:
-    shell: msys2bash.cmd
-
 jobs:
   build:
 
