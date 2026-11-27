@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Build BestAmp
 
 on:
   push:
@@ -6,18 +6,22 @@ on:
   pull_request:
     branches: [ "main" ]
 
+defaults:
+  run:
+    shell: msys2bash.cmd
+
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
+    - name: configure machine
+      run:
+        echo "is this working?"
+        echo "install make"
     - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+      run:
+        echo "$PATH"
+        make
