@@ -1,0 +1,17 @@
+name: Build BestAmp
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: make
+      run: |
+        Write-Host "building BestAmp"
+        make publish

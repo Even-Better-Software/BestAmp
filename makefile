@@ -32,7 +32,7 @@ all: audio-engine gui app run
 
 publish: NET_FLAGS += publish
 publish: BDIR = Release
-publish: audio-engine gui app publish
+publish: audio-engine gui app publish-files
 
 debug: NET_FLAGS += build --configuration Debug
 debug: AE_ARGS += debug
@@ -65,10 +65,10 @@ clean:
 # > (echo $(GUI)/bin/*; rm $(GUI)/bin/* -rfI)
 # > (echo $(APP)/bin/*; rm $(APP)/bin/* -rfI)
 
-publish: $(DIST)
+publish-files: $(DIST)
 > cp $(APP)/bin/Release/$(NET_VERSION_WIN)/* $(DIST)/ --recursive
 
-clean-publish: $(DIST)
+clean-publish-files: $(DIST)
 > echo "$(DIST)/*"
 > rm $(DIST)/* -rfI
 
