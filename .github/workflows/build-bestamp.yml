@@ -13,11 +13,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: configure machine
-      run: |
-        Write-Host "$env:PATH"
-        Write-Host "installing make"
-        pacman -S make
     - name: make
       run: |
         Write-Host "building BestAmp"
