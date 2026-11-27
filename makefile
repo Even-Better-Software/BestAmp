@@ -41,13 +41,13 @@ debug: audio-engine gui app run-debug
 
 
 audio-engine:
-> (cd $(AE); make $(AE_ARGS); cd ../)
+> (cd $(AE) && make $(AE_ARGS))
 
 gui:
-> (cd $(GUI); $(NET) publish; cd ../)
+> (cd $(GUI) && $(NET) publish)
 
 app: audio-engine gui
-> (cd $(APP); $(NET) $(NET_FLAGS); cd ../)
+> (cd $(APP) && $(NET) $(NET_FLAGS))
 > cp $(AE_DP) $(AE_CU) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/
 > cp $(GUI_WWWROOT) $(APP)/bin/$(BDIR)/$(NET_VERSION_WIN)/ --recursive
 
