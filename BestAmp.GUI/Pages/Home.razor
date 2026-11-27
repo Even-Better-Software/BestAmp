@@ -29,7 +29,7 @@
         }
     }
 </div>
-<main>
+<main @onmousemove="@OnDrag" @onmouseup="@OnDragEnd" @onmouseleave="@OnDragEnd">
     <div id="header">
         <div class="control-row">
             <div class="control-item">
@@ -53,7 +53,10 @@
             {
                 <div class="control-item">
                     <span class="control-input">
-                        <img src="@DIAL_ICON" alt="Dial" />
+                        <img id="img@(dial.Label)" @ref="@(dial.me)" src="@DIAL_ICON" alt="Dial" draggable="false"
+                            style="@($"transform: rotate({GetDialRotation(DraggedDial?.Label == dial.Label ? (float)DraggedOffset! : dial.Value)}deg)")"
+                            @onmousedown="@((args) => OnDragStart(args, dial))"
+                        />
                         <span class="control-label">@dial.Label</span>
                         @if (dial.Label == "Voice")
                         {
@@ -66,8 +69,8 @@
                         }
                         else
                         {
-                            <input id="@dial.Label" type="number" step="any" min=0 max=10 disabled="@(!Initialized)"
-                                   @bind="dial.Value" @bind:after="SendDials" />
+                            <input id="@dial.Label" type="number" step="any" min=0 max=MAX_DIAL_VALUE disabled="@(!Initialized)"
+                                   @bind="dial.Value" @bind:after="SendDials"/>
                         }
                     </span>
                 </div>
@@ -164,6 +167,9 @@
     /// This object is to be injected into the JS Runtime so it can call the functions here
     /// </summary>
     private DotNetObjectReference<Home>? callback;
+    
+    // Hardcoded constants
+    private const int MAX_DIAL_VALUE = 10;
 
     // File Paths
     private const string DIAL_ICON = "dial.png";
@@ -218,6 +224,8 @@
         { UserPrefs.DEFAULT, new UpdateAmpValuesRequest() }
     };
     private string ProfileNameInput { get; set; } = UserPrefs.DEFAULT;
+    private DialKnob? DraggedDial { get; set; } = null;
+    private float? DraggedOffset { get; set; } = 0;
 
 
     /// <summary>
@@ -461,6 +469,39 @@
         await OnProfileChanged();
     }
 
+    private void OnDragStart(MouseEventArgs args, DialKnob dial)
+    {
+        DraggedDial = dial;
+        DraggedOffset = dial.Value;
+    }
+
+    private void OnDrag(MouseEventArgs args)
+    {
+        if (DraggedDial is null || DraggedOffset is null)
+        {
+            return;
+        }
+
+        DraggedOffset -= (float) args.MovementY * 0.1f;
+        DraggedOffset = Math.Max(0, Math.Min(MAX_DIAL_VALUE, (float)DraggedOffset));
+        DraggedDial.Value = (int) DraggedOffset;
+        CaptureDials();
+    }
+
+    private async void OnDragEnd(MouseEventArgs args)
+    {
+        if (DraggedDial is null)
+        {
+            return;
+        }
+
+        DraggedDial = null;
+        DraggedOffset = null;
+        await SendDials();
+    }
+
+    private static double GetDialRotation(float value) => (30 * value) - 270;
+
     private async Task ToggleSettings(bool save = false)
     {
         if (SettingsOpen)
@@ -640,5 +681,6 @@
     {
         public string Label { get; } = label;
         public int Value { get; set; }
+        public ElementReference me { get; set; }
     }
 }
