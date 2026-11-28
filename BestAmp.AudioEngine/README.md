@@ -1,4 +1,4 @@
-# BestAmp
+# BestAmp.AudioEngine
 
 Software amplifier by Rodrigo & Will (BCIT).
 
