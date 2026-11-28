@@ -45,5 +45,5 @@ python ./message-sender
 
 ## Additional Documentation
 
-- [BestAmp protocol specification](./docs/ba_proto_spec.md)
-
+- [BestAmp protocol specification](../docs/ba_proto_spec.md)
+- [PortAudio](https://files.portaudio.com/docs/v19-doxydocs/portaudio_8h.html)

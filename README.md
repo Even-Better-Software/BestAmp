@@ -62,6 +62,23 @@ flowchart
 
 ## Building the Project
 
+Required software:
+- msys2 toolchain, ucrt64 recommended
+    - add `C:\msys64\usr\bin` to PATH
+        - GNU userland exes
+        - used in the makefile
+    - add `C:\msys64\ucrt64\bin` to PATH
+        - `gcc`, `make`
+- .NET 10
+    - Windows
+    - ASP.NET
+- Python3
+    - testing
+
+> [!WARNING]
+> **PowerShell** aliases will cause some cmdlets to execute over GNU exes, this may or may not be an issue, usually it isn't.
+
+
 ### Build & Run
 Compile the projects
 ```pwsh
