@@ -19,9 +19,33 @@ BestAmp will be implemented as two separate programs:
 - An AudioEngine "backend" Application
 - A Client "frontend" Application
 
-The AudioEngine application is going to be implemented in C using PortAudio. We chose this approach for the AudioEngine because the signal processing must be done with the lowest latency possible, & we can eliminate the overhead of a runtime/JIT by having the AudioEngine be a native binary. The PortAudio library will allows us to write this binary while also supporting the broadest surface of operating systems, drivers and therefore devices (even though our target is only Windows).
+The AudioEngine application is implemented in C using PortAudio. We chose this approach for the AudioEngine because the signal processing must be done with the lowest latency possible, & we can eliminate the overhead of a runtime/JIT by having the AudioEngine be a native binary. The PortAudio library allows BestAmp to support the broadest surface of operating systems, drivers and therefore devices (even though our target OS is only Windows, we want to support drivers & devices).
 
-The Client application is going to be implemented with Web technology (Blazor WASM), with the App serving the GUI using Windows Forms with WebView2 to give a native appearance. Our decision to write the GUI with Web technology comes down to our preference for Web technology for GUIs, it's the easiest technology to create GUIs with. Serving the GUI with WebView2 on windows will let BestAmp provide it's users with a native feeling experience with the UI.
+The Client application is implemented with Web technology (Blazor WASM), with the App serving the GUI using Windows Forms with WebView2 to give a native appearance. Our decision to write the GUI with Web technology comes down to the development team's preference for Web technology w.r.t. GUIs (it's also the easiest technology to create GUIs with), the alternative would be to implement the GUI also in C using Win32 APIs, but those APIs are cumbersome (to say the least). Serving the GUI with WebView2 on windows will let BestAmp provide it's users with a native feeling experience in the UI, while also allowing the project to remain feasible.
+
+```mermaid
+--- 
+config:
+    layout: dagre
+---
+flowchart
+    Users
+    subgraph BestAmp.App
+        UI["UI Thread (BestAmp.GUI)"]
+        APP[Message Translation Thread<br/>WebSocket & TCP Peer]
+    end
+    subgraph BestAmp.AudioEngine
+        MT[Main Thread</br>TCP Peer]
+        PA[Audio Processing Thread]
+    end
+
+    Users <--> UI
+
+    APP <-. "Websocket" .-> UI
+    APP <-. "TCP" .-> MT
+    MT -. "Amplifier state updates" .-> PA
+    MT -. "Driver / device state updates" .-> PA
+```
 
 
 ### AudioEngine State

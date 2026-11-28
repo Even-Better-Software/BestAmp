@@ -1,0 +1,22 @@
+--- 
+config:
+    layout: dagre
+---
+flowchart
+    Users
+    subgraph BestAmp.App
+        UI["UI Thread (BestAmp.GUI)"]
+        APP[Message Translation Thread<br/>WebSocket & TCP Peer]
+    end
+    subgraph BestAmp.AudioEngine
+        MT[Main Thread</br>TCP Peer]
+        PA[Audio Processing Thread]
+    end
+
+    Users <--> UI
+
+    APP <-. "Websocket" .-> UI
+    APP <-. "TCP" .-> MT
+    MT -. "Amplifier state updates" .-> PA
+    MT -. "Driver / device state updates" .-> PA
+
